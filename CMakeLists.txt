@@ -40,6 +40,7 @@ option(TOPTRACK_BUILD_CLIENT "Build the client (raylib + RmlUi)" ON)
 
 add_subdirectory(shared)
 add_subdirectory(server)
+add_subdirectory(tools/net_test)
 if(TOPTRACK_BUILD_CLIENT)
   add_subdirectory(client)
 endif()

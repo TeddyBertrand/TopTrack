@@ -52,7 +52,9 @@ diffs.
 
 ## Commit rule
 
-Work happens on feature branches, never directly on `main`. Commits: one
+Work happens on feature branches, never directly on `main`. Start a new
+branch per task/feature (don't keep piling unrelated work onto one
+branch). Commits: one
 line each, no body, no co-author trailer, formatted as Conventional
 Commits — `<type>(<scope>): <subject>`. Types: `feat`, `fix`, `refacto`,
 `docs`, `hotfix`. Split by feature/piece of work — never more than 5 files
