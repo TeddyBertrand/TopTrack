@@ -89,6 +89,31 @@ Added `scripts/dev-server.sh [port]` and `scripts/dev-client.sh`, each
 build+run in one call (wraps `build.sh` + `run-*.sh`). `make run-server`/
 `make run-client` now call these instead of separate build/run steps.
 
+## 2026-09-04 — Server↔shared protocol routing
+
+`server/src/net/server.cpp` no longer just logs messages — added a `Hub`
+(owns `Database` + `RoundManager` + the set of connected `Session`s) that
+every `Session` dispatches into. `SubmitTime` messages now: deserialize to
+`TimeEntry`, `database.recordTime()`, `roundManager.submitTime()` (sorts
+standings), then broadcast the resulting `LeaderboardUpdate` to every
+connected session. `Session::send()` added (frames + queues writes so
+concurrent broadcasts don't interleave on one socket). Sessions are
+dropped from the `Hub` on read/write error so dead connections stop
+receiving broadcasts.
+
+Temporary bootstrap: server auto-starts one round (`"round-1"` /
+`"track-1"`, 180s) on startup so `SubmitTime` has somewhere to land —
+real round scheduling (admin trigger / cron) doesn't exist yet, tracked as
+a TODO in `server.cpp`.
+
+Other message types (`RoundStart`, `TrackUpload`/`TrackDownload`) are
+still unhandled (`default:` case logs and ignores) — `Track` doesn't have
+JSON (de)serialization wired in `shared/` yet, so track upload/download
+routing is next.
+
+Verified: `make server-only` builds clean, server starts, creates/migrates
+`toptrack.db` on launch.
+
 **Known gaps / next likely steps** (not yet started): server↔shared
 protocol routing (server currently only logs messages, doesn't dispatch
 to `RoundManager`/`Database`), DB persistence methods, RmlUi/raylib
