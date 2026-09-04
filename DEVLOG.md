@@ -114,6 +114,32 @@ routing is next.
 Verified: `make server-only` builds clean, server starts, creates/migrates
 `toptrack.db` on launch.
 
+## 2026-09-04 — Basic client net implementation + link verification
+
+Implemented `client/net/client.hpp/.cpp` for real (was a stub): blocking
+Asio TCP client (pimpl'd `asio::io_context`/`tcp::socket` to keep asio out
+of the header) matching the server's `[length][type][payload]` framing —
+`connect()`, `sendTimeEntry()`, `receiveOne()` (blocks for one framed
+message, returns `nullopt` on disconnect), `disconnect()`. Blocking is
+deliberate for now — simple to reason about and test; the real raylib game
+loop will need this backgrounded or made async later, noted in the header.
+
+Added `tools/net_test` — a small standalone executable
+(`toptrack_net_test <host> <port>`) that links the real
+`client/src/net/client.cpp` plus `toptrack_shared`, but **not**
+raylib/RmlUi, so it builds fast and works under
+`-DTOPTRACK_BUILD_CLIENT=OFF`. It connects, submits a fake `TimeEntry`,
+prints whatever `LeaderboardUpdate` comes back. This is how the
+server↔shared routing from the previous entry actually got verified
+end-to-end rather than by inspection.
+
+Verified: `make server-only` builds `toptrack_server` +
+`toptrack_net_test`; ran the server, then `toptrack_net_test` against it —
+connected, submitted a time, got back a correctly-populated
+`LeaderboardUpdate` (`round-1`, one standing, matching player/time). Real
+client (raylib+RmlUi) net loop integration still not done — `client/net`
+now has working guts but `client/src/main.cpp` doesn't call into it yet.
+
 **Known gaps / next likely steps** (not yet started): server↔shared
 protocol routing (server currently only logs messages, doesn't dispatch
 to `RoundManager`/`Database`), DB persistence methods, RmlUi/raylib
