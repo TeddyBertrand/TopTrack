@@ -1,0 +1,28 @@
+#include "toptrack/protocol.hpp"
+
+#include <nlohmann/json.hpp>
+
+namespace toptrack::protocol {
+
+using json = nlohmann::json;
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GhostFrame, t, x, y, headingRad)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TimeEntry, playerName, trackId, timeMs, ghost)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RoundStart, roundId, trackId, durationSeconds)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LeaderboardUpdate, roundId, standings)
+
+std::string serialize(const RoundStart &msg) { return json(msg).dump(); }
+std::string serialize(const TimeEntry &msg) { return json(msg).dump(); }
+std::string serialize(const LeaderboardUpdate &msg) { return json(msg).dump(); }
+
+RoundStart deserializeRoundStart(const std::string &s) {
+  return json::parse(s).get<RoundStart>();
+}
+TimeEntry deserializeTimeEntry(const std::string &s) {
+  return json::parse(s).get<TimeEntry>();
+}
+LeaderboardUpdate deserializeLeaderboardUpdate(const std::string &s) {
+  return json::parse(s).get<LeaderboardUpdate>();
+}
+
+} // namespace toptrack::protocol
