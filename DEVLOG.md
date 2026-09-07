@@ -161,10 +161,41 @@ leaking nlohmann macros into headers. `TileType` uses
 Verified end-to-end: `toptrack_net_test` against a running server, then
 read `toptrack.db` directly (`sqlite3`/`python3 sqlite3`) — the submitted
 time landed in the `times` table with correct `track_id`/`player_name`/
-`time_ms`. `saveTrack`/`loadTrack` round-trip not yet exercised by any
-caller (nothing in the server currently calls them — `TrackUpload`/
-`TrackDownload` message types exist in the protocol enum but aren't
-dispatched in `server/net/server.cpp` yet).
+`time_ms`.
+
+## TrackUpload/TrackDownload dispatch wired (was undispatched enum values)
+
+`server/net/server.cpp`'s `dispatch()` only handled `SubmitTime` —
+`TrackUpload`/`TrackDownload` existed in the `MessageType` enum but fell
+through to the "unhandled message type" log line, so `saveTrack`/
+`loadTrack` (previous entry) had no caller. Wired both:
+- `TrackUpload`: deserialize `Track`, `hub_.database.saveTrack(track)`.
+- `TrackDownload`: deserialize a new `protocol::TrackRequest{trackId}`,
+  `loadTrack`, and reply with `MessageType::TrackUpload` carrying the
+  serialized `Track` — reusing that type rather than adding a fourth
+  message type, since the payload shape is identical either direction.
+  An empty `Track.id` in the reply means not-found (default-constructed
+  `Track{}` on `loadTrack`'s `nullopt`).
+
+Added `client::net::Client::uploadTrack()`/`requestTrack()` (mirrors
+`sendTimeEntry()`; factored the three into a shared `sendFramed()` helper
+in `client.cpp` instead of duplicating the framing code a third time).
+Extended `tools/net_test` to upload a small 2-tile track then download it
+back and print what came back — this is what verified the round-trip.
+
+Verified end-to-end: `toptrack_net_test` now does time-submit +
+leaderboard-read (existing) followed by track-upload +
+track-download-readback in one run against a live server — all four
+steps succeeded, downloaded track matched what was uploaded
+(id/name/tile count).
+
+**Known gaps / next likely steps**: RmlUi/raylib render bridge, tile
+editor logic (now has somewhere real to persist to), ghost recording/
+playback, medal computation from `MedalTimes` thresholds, real client
+build verification (blocked in this sandbox by missing X11 dev libs),
+`TrackDownload` request currently has no timeout/retry — a not-found
+reply is indistinguishable from a slow server until the client checks
+`Track.id`.
 
 **Known gaps / next likely steps** (not yet started): server↔shared
 protocol routing (server currently only logs messages, doesn't dispatch
