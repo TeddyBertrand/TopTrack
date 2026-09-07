@@ -25,4 +25,12 @@ LeaderboardUpdate deserializeLeaderboardUpdate(const std::string &s) {
   return json::parse(s).get<LeaderboardUpdate>();
 }
 
+std::string serializeGhost(const std::vector<GhostFrame> &ghost) {
+  return json(ghost).dump();
+}
+
+std::vector<GhostFrame> deserializeGhost(const std::string &s) {
+  return json::parse(s).get<std::vector<GhostFrame>>();
+}
+
 } // namespace toptrack::protocol

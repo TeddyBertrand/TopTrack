@@ -56,4 +56,9 @@ RoundStart deserializeRoundStart(const std::string &json);
 TimeEntry deserializeTimeEntry(const std::string &json);
 LeaderboardUpdate deserializeLeaderboardUpdate(const std::string &json);
 
+// Standalone ghost (de)serialization for storage layers (e.g. DB ghost_json
+// column) that need just the frame list, not a full TimeEntry.
+std::string serializeGhost(const std::vector<GhostFrame> &ghost);
+std::vector<GhostFrame> deserializeGhost(const std::string &json);
+
 } // namespace toptrack::protocol

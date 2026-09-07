@@ -1,6 +1,7 @@
 add_library(toptrack_shared STATIC
   src/physics.cpp
   src/protocol.cpp
+  src/track.cpp
 )
 
 target_include_directories(toptrack_shared PUBLIC include)

@@ -38,4 +38,12 @@ struct Track {
   MedalTimes medals;
 };
 
+std::string serialize(const Track &track);
+Track deserializeTrack(const std::string &json);
+
+// Standalone tile-list (de)serialization for storage layers that store
+// tiles separately from the rest of the track row.
+std::string serializeTiles(const std::vector<Tile> &tiles);
+std::vector<Tile> deserializeTiles(const std::string &json);
+
 } // namespace toptrack
