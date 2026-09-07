@@ -191,11 +191,31 @@ steps succeeded, downloaded track matched what was uploaded
 
 **Known gaps / next likely steps**: RmlUi/raylib render bridge, tile
 editor logic (now has somewhere real to persist to), ghost recording/
-playback, medal computation from `MedalTimes` thresholds, real client
-build verification (blocked in this sandbox by missing X11 dev libs),
-`TrackDownload` request currently has no timeout/retry — a not-found
-reply is indistinguishable from a slow server until the client checks
-`Track.id`.
+playback, real client build verification (blocked in this sandbox by
+missing X11 dev libs), `TrackDownload` request currently has no
+timeout/retry — a not-found reply is indistinguishable from a slow
+server until the client checks `Track.id`.
+
+## Medal computation wired (was noted in RoundManager's own docstring as unimplemented)
+
+Added `toptrack::Medal` enum (`None`/`Bronze`/`Silver`/`Gold`) and
+`medalForTime(timeMs, MedalTimes)` to `shared/track.{hpp,cpp}` — slowest
+qualifying medal, gold's threshold checked first since gold is the
+fastest/tightest cutoff. `TimeEntry` gained a `medal` field (defaults
+`None`, wire-serialized) so a submitted time's medal travels with it in
+`LeaderboardUpdate`.
+
+`RoundManager::startRound` now takes a `MedalTimes` (defaulted to
+all-zero/no medals for callers that don't care yet); `submitTime` scores
+each entry against it before sorting into standings. `server.cpp`'s
+round-1/track-1 bootstrap now passes real-ish placeholder thresholds
+(60000/45000/30000 ms) — genuine gap: this should come from
+`hub.database.loadTrack("track-1")` once real round scheduling exists,
+not a hardcoded literal; left a `TODO` at the call site.
+
+Verified: `toptrack_net_test`'s 12345ms fake time now reports
+`medal=3` (Gold) in the leaderboard printout, matching the bootstrap
+thresholds.
 
 **Known gaps / next likely steps** (not yet started): server↔shared
 protocol routing (server currently only logs messages, doesn't dispatch
