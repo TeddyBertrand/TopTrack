@@ -299,6 +299,31 @@ durationSeconds=180` then `initial leaderboard ... standings=0` (empty,
 correct for a freshly-migrated DB), then the rest of the existing
 net_test flow ran unchanged.
 
+## Tile editor implemented (was a pure TODO stub)
+
+`client/editor/tile_editor.{hpp,cpp}` now does real grid placement:
+mouse position → grid cell (`kCellSizePx = 32`), left-click places the
+selected `TileType` (or overwrites the type of whatever's already
+there), right-click removes, `R` rotates the tile under the cursor by
+90°, number keys 1-6 change the selected type (Checkpoint tiles get an
+auto-incrementing `checkpointOrder`). `draw()` renders a grid, each
+tile as a colored rect keyed by type, a rotation tick mark, and a cursor
+highlight. RmlUi toolbar for type selection is still TODO — keyboard
+only for now.
+
+Wired into `client/src/main.cpp`: `E` toggles editor mode (pauses the
+car/race HUD, shows the editor canvas instead); `U` in editor mode calls
+the new `NetSession::uploadTrack()` (mirrors `submitTime()`) to persist
+the in-progress track as `track-1` via the `TrackUpload` path from the
+earlier entry.
+
+Verified with `g++ -fsyntax-only` against the real raylib headers (same
+X11-sandbox constraint as other client changes) and a full `cmake
+--build` of the server-only targets to confirm the shared/net changes
+(`Track` reused as the editor's model, `NetSession::uploadTrack`) didn't
+break anything. No in-window smoke test — still blocked on X11 dev libs
+in this sandbox.
+
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
 Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
