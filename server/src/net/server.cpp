@@ -105,6 +105,14 @@ private:
     switch (static_cast<MessageType>(type_)) {
       case MessageType::SubmitTime: {
         auto entry = toptrack::protocol::deserializeTimeEntry(json);
+        // Anti-cheat sanity check only (no input replay yet — see the
+        // function's own doc comment) — flagged, not rejected, since
+        // there's no reject-response message type yet.
+        if (!toptrack::protocol::isTimeEntryPlausible(entry, toptrack::CarTuning{})) {
+          std::cout << "warning: implausible time from player="
+                     << entry.playerName << " trackId=" << entry.trackId
+                     << " timeMs=" << entry.timeMs << "\n";
+        }
         hub_.database.recordTime(entry);
         auto update = hub_.roundManager.submitTime(entry);
         auto updateJson = toptrack::protocol::serialize(update);
