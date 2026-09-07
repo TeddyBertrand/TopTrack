@@ -28,6 +28,7 @@ FetchContent_MakeAvailable(rmlui)
 add_executable(toptrack_client
   src/main.cpp
   src/game/car_controller.cpp
+  src/game/ghost_player.cpp
   src/editor/tile_editor.cpp
   src/ui/hud.cpp
   src/net/client.cpp
