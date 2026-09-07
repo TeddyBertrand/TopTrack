@@ -423,6 +423,37 @@ then read the `times` table directly with `python3`'s `sqlite3` —
 `medal=3` (Gold) persisted, matching the `medal=3` the leaderboard
 broadcast already showed.
 
+## Client reconnect on dropped/never-established connection
+
+`NetSession` previously connected once at startup and, if that failed or
+later dropped, stayed disconnected forever — `main.cpp`'s `netConnected`
+was a one-time snapshot, not live status. Added
+`NetSession::isConnected()` (live) and `reconnect()` (re-runs `connect()`
+with the host/port/playerName saved from the original call). `connect()`
+now also joins a stale-but-finished `receiveThread_` before starting a
+new one — needed because a server-side drop makes `receiveLoop()` exit
+and flip `connected_` to false on its own, without anyone having called
+`disconnect()` to join that thread yet; reassigning a `std::thread` that
+still represents a joinable object calls `std::terminate`, so the join
+has to happen first.
+
+`main.cpp` now reads `netSession.isConnected()` every frame for its
+status line instead of a stale bool, and retries `reconnect()` every 2s
+(a cooldown, not every frame, since a failed TCP connect can block
+briefly) while disconnected.
+
+Verified with two standalone throwaway harnesses:
+1. Connect to a closed port (fails, `Connection refused`) then
+   `reconnect()` again while still down — no crash, both correctly
+   report `isConnected()==false`.
+2. Connect to a closed port (fails), then `connect()` again to a
+   *different*, real open port on a live server — succeeds, and a
+   `submitTime()` + `disconnect()` afterward both work cleanly. This is
+   the same code path `reconnect()` uses (just with a fixed host/port
+   instead of a second literal), so it covers the actual risk: reusing
+   `Client`'s single `Impl`/socket across a failed-then-successful
+   connect pair.
+
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
 Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
