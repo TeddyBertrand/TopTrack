@@ -606,3 +606,16 @@ the gap visible immediately instead of only via a `status`/`tracks`
 cross-check.
 
 Verified: `cmake --build build -j` (server-only) builds clean.
+
+## Admin console `duration <seconds>` command
+
+Round length was hardcoded (`hub.roundDurationSeconds = 180.0`,
+set once at `Hub` construction) with no way to change it short of
+restarting the process — a real gap for testing rotation live (see the
+round-rotation entry's note about having to patch-and-revert the
+constant for that). `duration <seconds>` parses and validates
+(`std::stod`, rejects non-numeric input and values `<= 0`) then sets
+`hub.roundDurationSeconds` for the *next* rotation, same
+doesn't-affect-current-round semantics as `track <id>`.
+
+Verified: `cmake --build build -j` (server-only) builds clean.

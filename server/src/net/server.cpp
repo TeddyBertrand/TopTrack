@@ -264,6 +264,23 @@ void Server::run() {
           }
           std::cout << "\n";
         });
+      } else if (line.rfind("duration ", 0) == 0) {
+        std::string arg = line.substr(9);
+        double seconds = 0;
+        try {
+          seconds = std::stod(arg);
+        } catch (const std::exception &) {
+          std::cout << "invalid duration: " << arg << " (expected seconds, e.g. duration 180)\n";
+          continue;
+        }
+        if (seconds <= 0) {
+          std::cout << "duration must be positive, got " << seconds << "\n";
+          continue;
+        }
+        asio::post(io, [&hub, seconds]() {
+          hub.roundDurationSeconds = seconds;
+          std::cout << "next round will last " << seconds << "s\n";
+        });
       } else if (line == "rotate") {
         asio::post(io, rotateRound);
       } else if (line == "status") {
@@ -298,12 +315,13 @@ void Server::run() {
         });
       } else if (line == "help") {
         std::cout << "admin commands:\n"
-                      "  track <id>  - set the track the next rotation uses\n"
-                      "  rotate      - force an immediate round rotation\n"
-                      "  status      - print round/track/players snapshot\n"
-                      "  players     - list connected player names\n"
-                      "  tracks      - list saved track ids\n"
-                      "  help        - show this list\n";
+                      "  track <id>     - set the track the next rotation uses\n"
+                      "  duration <s>   - set the next round's length in seconds\n"
+                      "  rotate         - force an immediate round rotation\n"
+                      "  status         - print round/track/players snapshot\n"
+                      "  players        - list connected player names\n"
+                      "  tracks         - list saved track ids\n"
+                      "  help           - show this list\n";
       } else if (!line.empty()) {
         std::cout << "unknown admin command: " << line
                    << " (try: help)\n";
