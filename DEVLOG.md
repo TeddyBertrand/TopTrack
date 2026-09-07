@@ -485,6 +485,36 @@ logic (`loadTrack` → `RoundManager::startRound`) and submitted a 2000ms
 time — correctly scored Silver (between the custom silver/gold
 thresholds), not the old hardcoded thresholds' None.
 
+## Admin console for round/track control (last piece of the round-scheduling TODO)
+
+`server.cpp`'s round-rotation broadcast (roundId/trackId/durationSeconds
+`RoundStart` fanned out to every connected session) was inlined in the
+5s expiry-poll timer's callback — factored it out to a shared
+`rotateRound` lambda so a second trigger could reuse it.
+
+Added a minimal stdin admin console: a detached `std::thread` blocks on
+`std::getline(std::cin, ...)` and posts parsed commands back onto the
+`io_context`'s thread via `asio::post` (so `Hub` is never touched from
+two threads at once — everything else already runs single-threaded on
+`io.run()`). Two commands: `track <id>` sets `hub.trackId` for the
+*next* rotation (doesn't affect the round already in progress), `rotate`
+forces an immediate rotation (e.g. to apply a track change without
+waiting out however much of the current round remains).
+
+This is genuinely just an admin console, not a client-facing feature —
+no auth, no protocol message, stdin on the machine running the server
+process. Real per-round scheduling (a rotation calendar, client-visible
+track voting, etc.) is still open, but "operator can point the next
+round at a different track without restarting the process" was the
+concrete gap and it's closed.
+
+Verified live: piped `track track-2` then `rotate` twice into the real
+server binary's stdin (`stdbuf -oL` again, for the same buffered-stdout-
+under-SIGTERM reason as the round-rotation entry) — log showed `next
+round will use track=track-2`, then `round rotated: round-2
+(track=track-2)`, then `round rotated: round-3 (track=track-2)`,
+confirming both commands and the shared rotation path all work together.
+
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
 Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
