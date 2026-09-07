@@ -18,6 +18,13 @@ enum class MessageType : uint8_t {
   TrackDownload = 6,
 };
 
+// Hello payload sent right after connecting; server replies with the
+// active round's RoundStart followed by a LeaderboardUpdate seeded from
+// that track's persisted best times.
+struct HelloRequest {
+  std::string playerName;
+};
+
 struct GhostFrame {
   float t = 0;   // seconds since run start
   float x = 0;
@@ -60,11 +67,13 @@ std::string serialize(const RoundStart &msg);
 std::string serialize(const TimeEntry &msg);
 std::string serialize(const LeaderboardUpdate &msg);
 std::string serialize(const TrackRequest &msg);
+std::string serialize(const HelloRequest &msg);
 
 RoundStart deserializeRoundStart(const std::string &json);
 TimeEntry deserializeTimeEntry(const std::string &json);
 LeaderboardUpdate deserializeLeaderboardUpdate(const std::string &json);
 TrackRequest deserializeTrackRequest(const std::string &json);
+HelloRequest deserializeHelloRequest(const std::string &json);
 
 // Standalone ghost (de)serialization for storage layers (e.g. DB ghost_json
 // column) that need just the frame list, not a full TimeEntry.

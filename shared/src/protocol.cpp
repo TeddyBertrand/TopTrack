@@ -8,6 +8,7 @@ namespace toptrack::protocol {
 
 using json = nlohmann::json;
 
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(HelloRequest, playerName)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GhostFrame, t, x, y, headingRad)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TimeEntry, playerName, trackId, timeMs, ghost, medal)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RoundStart, roundId, trackId, durationSeconds)
@@ -18,6 +19,7 @@ std::string serialize(const RoundStart &msg) { return json(msg).dump(); }
 std::string serialize(const TimeEntry &msg) { return json(msg).dump(); }
 std::string serialize(const LeaderboardUpdate &msg) { return json(msg).dump(); }
 std::string serialize(const TrackRequest &msg) { return json(msg).dump(); }
+std::string serialize(const HelloRequest &msg) { return json(msg).dump(); }
 
 RoundStart deserializeRoundStart(const std::string &s) {
   return json::parse(s).get<RoundStart>();
@@ -39,6 +41,10 @@ std::vector<GhostFrame> deserializeGhost(const std::string &s) {
 
 TrackRequest deserializeTrackRequest(const std::string &s) {
   return json::parse(s).get<TrackRequest>();
+}
+
+HelloRequest deserializeHelloRequest(const std::string &s) {
+  return json::parse(s).get<HelloRequest>();
 }
 
 bool isTimeEntryPlausible(const TimeEntry &entry, const toptrack::CarTuning &tuning) {
