@@ -9,12 +9,26 @@ NetSession::~NetSession() { disconnect(); }
 bool NetSession::connect(const std::string &host, uint16_t port,
                           const std::string &playerName) {
   if (connected_) return true;
+  host_ = host;
+  port_ = port;
+  playerName_ = playerName;
+
+  // A previous connection's receive thread may have exited on its own
+  // (server dropped us) without disconnect() having joined it yet — a
+  // std::thread object must be empty before being reassigned below.
+  if (receiveThread_.joinable()) receiveThread_.join();
+
   if (!client_.connect(host, port)) return false;
 
   connected_ = true;
   receiveThread_ = std::thread(&NetSession::receiveLoop, this);
   client_.sendHello(playerName);
   return true;
+}
+
+bool NetSession::reconnect() {
+  if (connected_) return true;
+  return connect(host_, port_, playerName_);
 }
 
 void NetSession::disconnect() {

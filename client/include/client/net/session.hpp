@@ -29,6 +29,15 @@ public:
   bool connect(const std::string &host, uint16_t port, const std::string &playerName);
   void disconnect();
 
+  // Re-runs connect() with the host/port/playerName from the last
+  // connect() call — no-op (returns true) if already connected. Callers
+  // (e.g. the game loop) are expected to call this periodically, not
+  // continuously, while !isConnected() to recover from a dropped
+  // connection or a server that wasn't up yet at startup.
+  bool reconnect();
+
+  bool isConnected() const { return connected_; }
+
   void submitTime(const toptrack::protocol::TimeEntry &entry);
   void uploadTrack(const toptrack::Track &track);
 
@@ -46,6 +55,10 @@ private:
   Client client_;
   std::thread receiveThread_;
   std::atomic<bool> connected_{false};
+
+  std::string host_;
+  uint16_t port_ = 0;
+  std::string playerName_;
 
   std::mutex leaderboardMutex_;
   std::optional<toptrack::protocol::LeaderboardUpdate> leaderboard_;
