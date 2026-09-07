@@ -20,9 +20,10 @@ int main(int argc, char **argv) {
   uint16_t serverPort = argc > 2 ? static_cast<uint16_t>(std::atoi(argv[2])) : 7777;
 
   toptrack::client::net::NetSession netSession;
-  bool netConnected = netSession.connect(serverHost, serverPort);
+  bool netConnected = netSession.connect(serverHost, serverPort, "player1");
 
   toptrack::protocol::LeaderboardUpdate lastLeaderboard;
+  toptrack::protocol::RoundStart currentRound;
   float raceElapsedSeconds = 0.0f;
 
   while (!WindowShouldClose()) {
@@ -47,6 +48,9 @@ int main(int argc, char **argv) {
     if (auto update = netSession.takeLeaderboard()) {
       lastLeaderboard = std::move(*update);
     }
+    if (auto round = netSession.takeRoundStart()) {
+      currentRound = std::move(*round);
+    }
 
     BeginDrawing();
     ClearBackground(DARKGRAY);
@@ -57,7 +61,14 @@ int main(int argc, char **argv) {
     DrawText(netConnected ? "server: connected (T to submit time)" : "server: not connected",
               10, 10, 18, netConnected ? GREEN : RED);
 
-    int y = 36;
+    if (!currentRound.roundId.empty()) {
+      char roundLine[128];
+      std::snprintf(roundLine, sizeof(roundLine), "round=%s track=%s",
+                    currentRound.roundId.c_str(), currentRound.trackId.c_str());
+      DrawText(roundLine, 10, 30, 16, LIGHTGRAY);
+    }
+
+    int y = 50;
     for (const auto &standing : lastLeaderboard.standings) {
       char line[128];
       std::snprintf(line, sizeof(line), "%s  %.0fms", standing.playerName.c_str(), standing.timeMs);
