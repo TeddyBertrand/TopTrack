@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -18,9 +19,17 @@ public:
                    double durationSeconds,
                    const toptrack::MedalTimes &medals = {});
 
-  // Returns the updated leaderboard so the caller can broadcast it.
+  // Returns the updated leaderboard so the caller can broadcast it. A
+  // submission arriving after the round's durationSeconds has elapsed is
+  // dropped (closes the round as a side effect) rather than scored — the
+  // returned leaderboard is just whatever standings already existed.
   toptrack::protocol::LeaderboardUpdate submitTime(
       const toptrack::protocol::TimeEntry &entry);
+
+  // True once durationSeconds has elapsed since startRound(); also closes
+  // the round (isRoundActive() becomes false) as a side effect of the
+  // check, so callers don't need a separate closeRound() call.
+  bool hasExpired();
 
   bool isRoundActive() const { return roundActive_; }
   const std::string &currentRoundId() const { return currentRoundId_; }
@@ -32,6 +41,7 @@ private:
   std::string currentRoundId_;
   std::string currentTrackId_;
   double durationSeconds_ = 0;
+  std::chrono::steady_clock::time_point startTime_;
   toptrack::MedalTimes medals_;
   std::vector<toptrack::protocol::TimeEntry> standings_;
 };
