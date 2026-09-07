@@ -324,6 +324,33 @@ X11-sandbox constraint as other client changes) and a full `cmake
 break anything. No in-window smoke test — still blocked on X11 dev libs
 in this sandbox.
 
+## Ghost playback (was the other open half of the ghost-recording gap)
+
+Added `client::game::GhostPlayer` (`ghost_player.{hpp,cpp}`): loads a
+`vector<GhostFrame>` (sorted by `t`), `sampleAt(tSeconds)` linearly
+interpolates x/y/headingRad between the two frames straddling
+`tSeconds`, returning `nullopt` before the first frame or after the
+last. Pure interpolation, no physics — the ghost is just replaying
+already-recorded positions.
+
+Wired into `main.cpp`: whenever a `LeaderboardUpdate` arrives, the
+best (`standings.front()`, since standings are sorted best-first) time's
+ghost is loaded — this is the same `ghost` field `bestTimesForTrack`
+already populated (see the Hello-handshake entry), just consumed on the
+client now. During racing, `ghostPlayer.sampleAt(raceElapsedSeconds)`
+draws the best run's position as a hollow sky-blue circle alongside the
+live car — `raceElapsedSeconds` lines up with the ghost's own `t` since
+both are seconds-since-run-start with the same reset-on-submit
+convention (`CarController::resetRun()`).
+
+Verified interpolation logic with a standalone throwaway harness
+(`GhostPlayer` against a synthetic 6-frame, 10-units/sec ghost): midpoint
+sample interpolated correctly (t=2.5 → x=25), the last frame sampled
+exactly (t=5 → x=50), and out-of-range samples on both ends correctly
+returned `nullopt`. Full `cmake --build` of server-only targets stayed
+green; in-window rendering still unverified (X11-sandbox constraint,
+as elsewhere in this log).
+
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
 Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
