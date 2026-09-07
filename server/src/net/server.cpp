@@ -9,6 +9,8 @@
 #include <iostream>
 #include <memory>
 #include <set>
+#include <string>
+#include <thread>
 #include <vector>
 
 #include "server/db/database.hpp"
@@ -198,37 +200,65 @@ void Server::run() {
   tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), port_));
 
   Hub hub("toptrack.db");
-  // TODO: real round scheduling (admin command, different tracks per
-  // round). For now, rounds just rotate on hub.trackId every
-  // hub.roundDurationSeconds via the timer below, sourcing medal
-  // thresholds from the track itself (see Hub::startNextRound).
+  // Rounds rotate on hub.trackId every hub.roundDurationSeconds via the
+  // timer below (medal thresholds sourced from the track itself, see
+  // Hub::startNextRound), or on-demand via the admin console's "rotate".
+  // Real admin-triggered *track selection between rounds* is handled by
+  // "track <id>" below; a full admin UI/auth story is still open.
   hub.startNextRound();
 
-  // Polls for round expiry every 5s (cheap relative to a 180s+ round) and
-  // rotates in a fresh round, broadcasting its RoundStart to everyone
-  // still connected so clients pick up the new roundId without having to
-  // resend Hello.
+  // Starts a fresh round and broadcasts its RoundStart to everyone still
+  // connected, so clients pick up the new roundId without resending
+  // Hello. Shared by the expiry timer and the admin "rotate" command.
+  auto rotateRound = [&]() {
+    hub.startNextRound();
+    toptrack::protocol::RoundStart roundStart;
+    roundStart.roundId = hub.roundManager.currentRoundId();
+    roundStart.trackId = hub.roundManager.currentTrackId();
+    roundStart.durationSeconds = hub.roundManager.currentDurationSeconds();
+    auto roundStartJson = toptrack::protocol::serialize(roundStart);
+    std::cout << "round rotated: " << roundStart.roundId
+               << " (track=" << roundStart.trackId << ")\n";
+    for (auto &session : hub.sessions) {
+      session->send(toptrack::protocol::MessageType::RoundStart, roundStartJson);
+    }
+  };
+
+  // Polls for round expiry every 5s (cheap relative to a 180s+ round).
   asio::steady_timer roundTimer(io);
   std::function<void()> scheduleRoundCheck = [&]() {
     roundTimer.expires_after(std::chrono::seconds(5));
     roundTimer.async_wait([&](std::error_code ec) {
       if (ec) return;
-      if (hub.roundManager.hasExpired()) {
-        hub.startNextRound();
-        toptrack::protocol::RoundStart roundStart;
-        roundStart.roundId = hub.roundManager.currentRoundId();
-        roundStart.trackId = hub.roundManager.currentTrackId();
-        roundStart.durationSeconds = hub.roundManager.currentDurationSeconds();
-        auto roundStartJson = toptrack::protocol::serialize(roundStart);
-        std::cout << "round rotated: " << roundStart.roundId << "\n";
-        for (auto &session : hub.sessions) {
-          session->send(toptrack::protocol::MessageType::RoundStart, roundStartJson);
-        }
-      }
+      if (hub.roundManager.hasExpired()) rotateRound();
       scheduleRoundCheck();
     });
   };
   scheduleRoundCheck();
+
+  // Minimal admin console on stdin: "track <id>" changes which track the
+  // *next* rotation uses, "rotate" forces one immediately (e.g. to apply
+  // a track change without waiting out the current round). Runs on its
+  // own thread since std::getline blocks; posts back onto io's thread so
+  // Hub is never touched concurrently from two threads.
+  std::thread adminThread([&io, &hub, &rotateRound]() {
+    std::string line;
+    while (std::getline(std::cin, line)) {
+      if (line.rfind("track ", 0) == 0) {
+        std::string trackId = line.substr(6);
+        asio::post(io, [&hub, trackId]() {
+          hub.trackId = trackId;
+          std::cout << "next round will use track=" << trackId << "\n";
+        });
+      } else if (line == "rotate") {
+        asio::post(io, rotateRound);
+      } else if (!line.empty()) {
+        std::cout << "unknown admin command: " << line
+                   << " (try: track <id>, rotate)\n";
+      }
+    }
+  });
+  adminThread.detach();
 
   std::function<void()> doAccept = [&]() {
     acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
