@@ -351,6 +351,37 @@ returned `nullopt`. Full `cmake --build` of server-only targets stayed
 green; in-window rendering still unverified (X11-sandbox constraint,
 as elsewhere in this log).
 
+## Round expiry (durationSeconds was stored but never checked)
+
+`RoundManager` stored `durationSeconds` since the round-scoring entry but
+nothing ever compared it against elapsed time — a round never actually
+ended. Added `startTime_` (`steady_clock::time_point`, set in
+`startRound`) and `hasExpired()`: true once `durationSeconds` has
+elapsed since start, and closes the round (`roundActive_ = false`) as a
+side effect so callers don't need a separate close call.
+`submitTime()` now calls `hasExpired()` first — a submission arriving
+after expiry is dropped (not scored, not added to standings) and just
+returns the leaderboard as it already stood.
+
+`server.cpp`'s `SubmitTime` dispatch is unchanged — `recordTime()` still
+persists every submission to the DB regardless of round state (that's
+storage, not live standings), only `roundManager.submitTime()`'s
+in-memory scoring respects expiry.
+
+Verified with a standalone throwaway harness (`RoundManager` given a
+0.2s round): immediately after `startRound`, `hasExpired()` is false and
+a submission scores normally (1 standing); after sleeping 300ms,
+`hasExpired()` flips true and `isRoundActive()` false; a second
+submission after that point is correctly dropped (standings count stays
+at 1, not 2). Full `cmake --build` of server-only targets stayed green.
+
+**Known gaps / next likely steps**: nothing currently starts a *new*
+round once one expires — `hub.roundManager.startRound()` is still only
+called once at server bootstrap, so a round-1/track-1 bootstrap running
+past 180s just stops accepting times with no successor round scheduled.
+Real admin-triggered or cron-scheduled round rotation is still open (was
+already flagged as a TODO at the bootstrap call site).
+
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
 Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
