@@ -19,6 +19,25 @@ int main(int argc, char **argv) {
   }
   std::cout << "connected to " << host << ":" << port << "\n";
 
+  client.sendHello("net_test");
+  auto helloReply1 = client.receiveOne();
+  auto helloReply2 = client.receiveOne();
+  for (auto *reply : {&helloReply1, &helloReply2}) {
+    if (!*reply) {
+      std::cerr << "no reply to Hello (disconnected?)\n";
+      return 1;
+    }
+    if ((*reply)->first == toptrack::protocol::MessageType::RoundStart) {
+      auto roundStart = toptrack::protocol::deserializeRoundStart((*reply)->second);
+      std::cout << "round=" << roundStart.roundId << " track=" << roundStart.trackId
+                << " durationSeconds=" << roundStart.durationSeconds << "\n";
+    } else if ((*reply)->first == toptrack::protocol::MessageType::LeaderboardUpdate) {
+      auto update = toptrack::protocol::deserializeLeaderboardUpdate((*reply)->second);
+      std::cout << "initial leaderboard for round=" << update.roundId
+                << " standings=" << update.standings.size() << "\n";
+    }
+  }
+
   toptrack::protocol::TimeEntry entry;
   entry.playerName = "net_test";
   entry.trackId = "track-1";
