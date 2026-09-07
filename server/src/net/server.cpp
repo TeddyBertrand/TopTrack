@@ -113,6 +113,20 @@ private:
         }
         break;
       }
+      case MessageType::TrackUpload: {
+        auto track = toptrack::deserializeTrack(json);
+        hub_.database.saveTrack(track);
+        break;
+      }
+      case MessageType::TrackDownload: {
+        auto request = toptrack::protocol::deserializeTrackRequest(json);
+        auto track = hub_.database.loadTrack(request.trackId);
+        // Empty `id` signals not-found; reuses TrackUpload as the response
+        // type since it already carries a full Track payload.
+        auto responseJson = toptrack::serialize(track.value_or(toptrack::Track{}));
+        send(MessageType::TrackUpload, responseJson);
+        break;
+      }
       default:
         std::cout << "unhandled message type=" << static_cast<int>(type_)
                    << " bytes=" << length_ << "\n";
