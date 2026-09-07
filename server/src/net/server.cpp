@@ -1,6 +1,7 @@
 #include "server/net/server.hpp"
 
 #include <asio.hpp>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <deque>
@@ -30,7 +31,20 @@ struct Hub {
   tournament::RoundManager roundManager;
   std::set<std::shared_ptr<Session>> sessions;
 
+  // Bootstrap round rotation: same track/duration/medals every time,
+  // roundId just increments. Real round scheduling (different tracks,
+  // admin-triggered) is still a TODO — see startRound's own comment.
+  std::string trackId = "track-1";
+  double roundDurationSeconds = 180.0;
+  toptrack::MedalTimes medals{60000, 45000, 30000};
+  int roundCounter = 1;
+
   explicit Hub(const std::string &dbPath) : database(dbPath) {}
+
+  void startNextRound() {
+    std::string roundId = "round-" + std::to_string(roundCounter++);
+    roundManager.startRound(roundId, trackId, roundDurationSeconds, medals);
+  }
 };
 
 // One framed message: [uint32 length][uint8 type][payload], matching
@@ -175,13 +189,37 @@ void Server::run() {
   tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), port_));
 
   Hub hub("toptrack.db");
-  // TODO: real round scheduling (admin command / cron). Bootstrapped here
-  // so SubmitTime has an active round to land in until that exists.
-  // TODO: source medal thresholds from the actual track once round
-  // scheduling loads a real Track via hub.database.loadTrack instead of
-  // hardcoding round-1/track-1 here.
-  hub.roundManager.startRound("round-1", "track-1", 180.0,
-                               toptrack::MedalTimes{60000, 45000, 30000});
+  // TODO: real round scheduling (admin command, different tracks per
+  // round, medal thresholds sourced from hub.database.loadTrack instead
+  // of the hardcoded Hub::medals). For now, rounds just rotate on
+  // hub.trackId every hub.roundDurationSeconds via the timer below.
+  hub.startNextRound();
+
+  // Polls for round expiry every 5s (cheap relative to a 180s+ round) and
+  // rotates in a fresh round, broadcasting its RoundStart to everyone
+  // still connected so clients pick up the new roundId without having to
+  // resend Hello.
+  asio::steady_timer roundTimer(io);
+  std::function<void()> scheduleRoundCheck = [&]() {
+    roundTimer.expires_after(std::chrono::seconds(5));
+    roundTimer.async_wait([&](std::error_code ec) {
+      if (ec) return;
+      if (hub.roundManager.hasExpired()) {
+        hub.startNextRound();
+        toptrack::protocol::RoundStart roundStart;
+        roundStart.roundId = hub.roundManager.currentRoundId();
+        roundStart.trackId = hub.roundManager.currentTrackId();
+        roundStart.durationSeconds = hub.roundManager.currentDurationSeconds();
+        auto roundStartJson = toptrack::protocol::serialize(roundStart);
+        std::cout << "round rotated: " << roundStart.roundId << "\n";
+        for (auto &session : hub.sessions) {
+          session->send(toptrack::protocol::MessageType::RoundStart, roundStartJson);
+        }
+      }
+      scheduleRoundCheck();
+    });
+  };
+  scheduleRoundCheck();
 
   std::function<void()> doAccept = [&]() {
     acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
