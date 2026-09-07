@@ -6,11 +6,12 @@ namespace toptrack::server::tournament {
 
 void RoundManager::startRound(const std::string &roundId,
                                const std::string &trackId,
-                               double /*durationSeconds*/,
+                               double durationSeconds,
                                const toptrack::MedalTimes &medals) {
   roundActive_ = true;
   currentRoundId_ = roundId;
   currentTrackId_ = trackId;
+  durationSeconds_ = durationSeconds;
   medals_ = medals;
   standings_.clear();
 }

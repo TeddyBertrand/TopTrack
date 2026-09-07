@@ -23,11 +23,15 @@ public:
       const toptrack::protocol::TimeEntry &entry);
 
   bool isRoundActive() const { return roundActive_; }
+  const std::string &currentRoundId() const { return currentRoundId_; }
+  const std::string &currentTrackId() const { return currentTrackId_; }
+  double currentDurationSeconds() const { return durationSeconds_; }
 
 private:
   bool roundActive_ = false;
   std::string currentRoundId_;
   std::string currentTrackId_;
+  double durationSeconds_ = 0;
   toptrack::MedalTimes medals_;
   std::vector<toptrack::protocol::TimeEntry> standings_;
 };

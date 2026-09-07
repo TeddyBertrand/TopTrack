@@ -103,6 +103,22 @@ private:
     std::string json(payload_.begin(), payload_.end());
 
     switch (static_cast<MessageType>(type_)) {
+      case MessageType::Hello: {
+        auto hello = toptrack::protocol::deserializeHelloRequest(json);
+        std::cout << "hello from player=" << hello.playerName << "\n";
+
+        toptrack::protocol::RoundStart roundStart;
+        roundStart.roundId = hub_.roundManager.currentRoundId();
+        roundStart.trackId = hub_.roundManager.currentTrackId();
+        roundStart.durationSeconds = hub_.roundManager.currentDurationSeconds();
+        send(MessageType::RoundStart, toptrack::protocol::serialize(roundStart));
+
+        toptrack::protocol::LeaderboardUpdate update;
+        update.roundId = roundStart.roundId;
+        update.standings = hub_.database.bestTimesForTrack(roundStart.trackId);
+        send(MessageType::LeaderboardUpdate, toptrack::protocol::serialize(update));
+        break;
+      }
       case MessageType::SubmitTime: {
         auto entry = toptrack::protocol::deserializeTimeEntry(json);
         // Anti-cheat sanity check only (no input replay yet — see the
