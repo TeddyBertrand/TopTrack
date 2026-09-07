@@ -454,6 +454,37 @@ Verified with two standalone throwaway harnesses:
    `Client`'s single `Impl`/socket across a failed-then-successful
    connect pair.
 
+## Round rotation now sources real medal thresholds (closes a repeatedly-flagged TODO)
+
+`Hub::startNextRound()` (server.cpp) previously always passed a
+hardcoded `MedalTimes{60000, 45000, 30000}` into `startRound()`,
+ignoring whatever medals an uploaded track actually declared — flagged
+as a TODO in three previous entries. Now it calls
+`database.loadTrack(trackId)` first and uses the loaded track's
+`medals`, falling back to the hardcoded placeholder only if the track
+hasn't been saved yet (fresh DB, nobody's used the tile editor's upload
+yet).
+
+Verification note: my first attempt was a live end-to-end test against
+the real server with a temporarily-patched 2s round duration, and it was
+flaky — the fixed 5s round-expiry poll interval (from the round-rotation
+entry) means a 2s round doesn't actually rotate until the next poll
+tick, and by the time a test client's own connect/Hello/submit
+round-trip finished, the round had *already re-expired again*, so the
+submission got legitimately dropped by the (working-as-designed) expiry
+check, not by a bug in medal sourcing. Story for anyone hitting the same
+flakiness: keep round durations comfortably larger than the poll
+interval when testing rotation live.
+
+Verified for real with a timing-independent standalone harness instead:
+`Database` (temp file — `:memory:` doesn't work here since `Database`
+opens a fresh `SQLite::Database` connection per call, so `:memory:`
+would give each call an empty, unrelated DB) with a track saved with
+custom `medals{5000, 3000, 1000}`, then mirrored `startNextRound()`'s own
+logic (`loadTrack` → `RoundManager::startRound`) and submitted a 2000ms
+time — correctly scored Silver (between the custom silver/gold
+thresholds), not the old hardcoded thresholds' None.
+
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
 Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
