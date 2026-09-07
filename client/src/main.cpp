@@ -4,6 +4,7 @@
 
 #include "client/editor/tile_editor.hpp"
 #include "client/game/car_controller.hpp"
+#include "client/game/ghost_player.hpp"
 #include "client/net/session.hpp"
 #include "client/ui/hud.hpp"
 #include "toptrack/protocol.hpp"
@@ -13,6 +14,7 @@ int main(int argc, char **argv) {
   SetTargetFPS(60);
 
   toptrack::client::game::CarController car;
+  toptrack::client::game::GhostPlayer ghostPlayer;
   toptrack::client::editor::TileEditor editor;
   toptrack::client::ui::Hud hud;
   hud.init();
@@ -65,6 +67,10 @@ int main(int argc, char **argv) {
 
     if (auto update = netSession.takeLeaderboard()) {
       lastLeaderboard = std::move(*update);
+      // Race against the current best (standings are sorted best-first).
+      if (!lastLeaderboard.standings.empty() && !lastLeaderboard.standings.front().ghost.empty()) {
+        ghostPlayer.load(lastLeaderboard.standings.front().ghost);
+      }
     }
     if (auto round = netSession.takeRoundStart()) {
       currentRound = std::move(*round);
@@ -80,6 +86,11 @@ int main(int argc, char **argv) {
     } else {
       const auto &s = car.state();
       DrawCircle(static_cast<int>(640 + s.x), static_cast<int>(360 + s.y), 10, RED);
+
+      if (auto ghostFrame = ghostPlayer.sampleAt(raceElapsedSeconds)) {
+        DrawCircleLines(static_cast<int>(640 + ghostFrame->x), static_cast<int>(360 + ghostFrame->y),
+                         10, SKYBLUE);
+      }
 
       DrawText(netConnected ? "server: connected (T to submit time, E for editor)" : "server: not connected",
                 10, 10, 18, netConnected ? GREEN : RED);
