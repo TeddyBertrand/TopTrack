@@ -30,6 +30,7 @@ public:
   void disconnect();
 
   void submitTime(const toptrack::protocol::TimeEntry &entry);
+  void uploadTrack(const toptrack::Track &track);
 
   // Latest LeaderboardUpdate received from the server, if any arrived
   // since the last call.

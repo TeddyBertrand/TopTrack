@@ -29,6 +29,11 @@ void NetSession::submitTime(const toptrack::protocol::TimeEntry &entry) {
   client_.sendTimeEntry(entry);
 }
 
+void NetSession::uploadTrack(const toptrack::Track &track) {
+  if (!connected_) return;
+  client_.uploadTrack(track);
+}
+
 std::optional<toptrack::protocol::LeaderboardUpdate>
 NetSession::takeLeaderboard() {
   std::lock_guard<std::mutex> lock(leaderboardMutex_);
