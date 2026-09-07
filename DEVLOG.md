@@ -190,11 +190,13 @@ steps succeeded, downloaded track matched what was uploaded
 (id/name/tile count).
 
 **Known gaps / next likely steps**: RmlUi/raylib render bridge, tile
-editor logic (now has somewhere real to persist to), ghost recording/
-playback, real client build verification (blocked in this sandbox by
-missing X11 dev libs), `TrackDownload` request currently has no
-timeout/retry — a not-found reply is indistinguishable from a slow
-server until the client checks `Track.id`.
+editor logic (now has somewhere real to persist to), ghost playback
+(recording is done, see below), real client build verification (blocked
+in this sandbox by missing X11 dev libs), `TrackDownload` request
+currently has no timeout/retry — a not-found reply is indistinguishable
+from a slow server until the client checks `Track.id`, and the server
+still doesn't re-simulate submitted ghosts through `stepCar` to validate
+them (it trusts whatever `timeMs`/ghost the client sends).
 
 ## Medal computation wired (was noted in RoundManager's own docstring as unimplemented)
 
@@ -250,3 +252,25 @@ the environment, unrelated to this change). Verified instead by
 pulled into `build/_deps/` — `session.cpp` and `main.cpp` both compile
 clean. Full client build + in-window smoke test still needed on a
 machine with X11 dev libs present.
+
+## Ghost recording wired into CarController
+
+`CarController` now records a `toptrack::protocol::GhostFrame` (t/x/y/
+headingRad) every `update()` call into a `ghost_` vector, exposed via
+`ghost()`; `resetRun()` clears it (and elapsed time) to start a fresh
+run. `client/src/main.cpp`'s `T`-to-submit path now fills
+`TimeEntry::ghost` from `car.ghost()` instead of leaving it empty, and
+calls `resetRun()` after submitting so the next run starts clean.
+
+Deliberately reuses `toptrack::protocol::GhostFrame` directly rather than
+a separate game-layer type — client/server already share this struct
+over the wire and `CarController` sat downstream of `toptrack::` either
+way (it already depended on `physics.hpp`).
+
+Verified with `g++ -fsyntax-only` against the real raylib/asio/json
+headers in `build/_deps/` (same constraint as the net loop change — no
+X11 in this sandbox), plus a full `cmake --build` of the
+`-DTOPTRACK_BUILD_CLIENT=OFF` targets to confirm nothing else broke.
+Ghost *playback* (rendering another run's recorded path) and server-side
+`stepCar` re-simulation to validate a submitted ghost are still open —
+noted above.
