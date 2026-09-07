@@ -1,4 +1,5 @@
 include(FetchContent)
+find_package(Threads REQUIRED)
 
 # --- raylib ---
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -27,9 +28,11 @@ FetchContent_MakeAvailable(rmlui)
 add_executable(toptrack_client
   src/main.cpp
   src/game/car_controller.cpp
+  src/game/ghost_player.cpp
   src/editor/tile_editor.cpp
   src/ui/hud.cpp
   src/net/client.cpp
+  src/net/session.cpp
 )
 
 target_include_directories(toptrack_client PRIVATE include)
@@ -39,4 +42,5 @@ target_link_libraries(toptrack_client PRIVATE
   raylib
   RmlCore
   RmlDebugger
+  Threads::Threads
 )

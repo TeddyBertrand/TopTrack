@@ -39,19 +39,46 @@ void Client::disconnect() {
   }
 }
 
-void Client::sendTimeEntry(const toptrack::protocol::TimeEntry &entry) {
-  if (!impl_) return;
-
-  std::string json = toptrack::protocol::serialize(entry);
+namespace {
+void sendFramed(tcp::socket &socket, toptrack::protocol::MessageType type,
+                 const std::string &json) {
   std::string frame;
   uint32_t len = static_cast<uint32_t>(json.size());
   frame.resize(sizeof(len) + sizeof(uint8_t) + json.size());
   std::memcpy(frame.data(), &len, sizeof(len));
-  uint8_t type = static_cast<uint8_t>(toptrack::protocol::MessageType::SubmitTime);
-  std::memcpy(frame.data() + sizeof(len), &type, sizeof(type));
-  std::memcpy(frame.data() + sizeof(len) + sizeof(type), json.data(), json.size());
+  uint8_t typeByte = static_cast<uint8_t>(type);
+  std::memcpy(frame.data() + sizeof(len), &typeByte, sizeof(typeByte));
+  std::memcpy(frame.data() + sizeof(len) + sizeof(typeByte), json.data(), json.size());
+  asio::write(socket, asio::buffer(frame));
+}
+} // namespace
 
-  asio::write(impl_->socket, asio::buffer(frame));
+void Client::sendHello(const std::string &playerName) {
+  if (!impl_) return;
+  toptrack::protocol::HelloRequest hello;
+  hello.playerName = playerName;
+  sendFramed(impl_->socket, toptrack::protocol::MessageType::Hello,
+             toptrack::protocol::serialize(hello));
+}
+
+void Client::sendTimeEntry(const toptrack::protocol::TimeEntry &entry) {
+  if (!impl_) return;
+  sendFramed(impl_->socket, toptrack::protocol::MessageType::SubmitTime,
+             toptrack::protocol::serialize(entry));
+}
+
+void Client::uploadTrack(const toptrack::Track &track) {
+  if (!impl_) return;
+  sendFramed(impl_->socket, toptrack::protocol::MessageType::TrackUpload,
+             toptrack::serialize(track));
+}
+
+void Client::requestTrack(const std::string &trackId) {
+  if (!impl_) return;
+  toptrack::protocol::TrackRequest request;
+  request.trackId = trackId;
+  sendFramed(impl_->socket, toptrack::protocol::MessageType::TrackDownload,
+             toptrack::protocol::serialize(request));
 }
 
 std::optional<std::pair<toptrack::protocol::MessageType, std::string>>
