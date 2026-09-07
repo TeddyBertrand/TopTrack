@@ -143,6 +143,33 @@ now has working guts but `client/src/main.cpp` doesn't call into it yet.
 **Known gaps / next likely steps** (not yet started): server↔shared
 protocol routing (server currently only logs messages, doesn't dispatch
 to `RoundManager`/`Database`), DB persistence methods, RmlUi/raylib
-render bridge, tile editor logic, client networking, ghost recording/
-playback, medal computation from `MedalTimes` thresholds, client build
-verification.
+render bridge, tile editor logic, ghost recording/playback, medal
+computation from `MedalTimes` thresholds, client build verification.
+
+## Client net loop wired into main.cpp
+
+Added `client/net/session.hpp/.cpp` (`NetSession`): wraps the blocking
+`Client` in a background thread so the 60fps raylib loop never stalls on
+`receiveOne()`. Background thread owns the receive loop and stashes the
+latest `LeaderboardUpdate` behind a mutex (`takeLeaderboard()`); the main
+thread calls `submitTime()` to write. Concurrent blocking read (bg
+thread) + write (main thread) on the same Asio socket is fine as long as
+writes don't overlap each other, which holds here since `submitTime()`
+is only ever called from the main thread.
+
+`client/src/main.cpp` now connects to `127.0.0.1:7777` (overridable via
+argv) at startup, submits a fake finish time (elapsed run seconds) on
+pressing `T` — same shape as `tools/net_test`, real finish-line detection
+isn't wired yet — and draws whatever `LeaderboardUpdate` last arrived as
+plain text over the placeholder car view.
+
+Added `find_package(Threads REQUIRED)` / `Threads::Threads` to
+`client/CMakeLists.txt` for `std::thread`.
+
+Not verified against a running window: this sandbox's raylib build fails
+at CMake configure (`Could NOT find X11` — GLFW dependency missing from
+the environment, unrelated to this change). Verified instead by
+`g++ -fsyntax-only` against the real asio/nlohmann-json/raylib headers
+pulled into `build/_deps/` — `session.cpp` and `main.cpp` both compile
+clean. Full client build + in-window smoke test still needed on a
+machine with X11 dev libs present.
