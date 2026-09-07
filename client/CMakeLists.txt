@@ -1,4 +1,5 @@
 include(FetchContent)
+find_package(Threads REQUIRED)
 
 # --- raylib ---
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -30,6 +31,7 @@ add_executable(toptrack_client
   src/editor/tile_editor.cpp
   src/ui/hud.cpp
   src/net/client.cpp
+  src/net/session.cpp
 )
 
 target_include_directories(toptrack_client PRIVATE include)
@@ -39,4 +41,5 @@ target_link_libraries(toptrack_client PRIVATE
   raylib
   RmlCore
   RmlDebugger
+  Threads::Threads
 )
