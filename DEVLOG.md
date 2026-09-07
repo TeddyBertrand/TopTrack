@@ -568,3 +568,14 @@ set for real when it does) and a `playerName()` getter. New admin command
 connected"), same `asio::post` pattern as `status`/`rotate`.
 
 Verified: `cmake --build build -j` (server-only) builds clean.
+
+## Admin console `help` command
+
+Fifth admin command, printed straight from the admin thread (no `Hub`
+touched, so no `asio::post` needed unlike the others) — lists `track
+<id>`/`rotate`/`status`/`players`/`help` with a one-line description
+each. The "unknown admin command" fallback now just points at `help`
+instead of duplicating the growing command list inline every time a new
+one got added.
+
+Verified: `cmake --build build -j` (server-only) builds clean.

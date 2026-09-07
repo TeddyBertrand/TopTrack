@@ -276,9 +276,16 @@ void Server::run() {
             std::cout << "  " << session->playerName() << "\n";
           }
         });
+      } else if (line == "help") {
+        std::cout << "admin commands:\n"
+                      "  track <id>  - set the track the next rotation uses\n"
+                      "  rotate      - force an immediate round rotation\n"
+                      "  status      - print round/track/players snapshot\n"
+                      "  players     - list connected player names\n"
+                      "  help        - show this list\n";
       } else if (!line.empty()) {
         std::cout << "unknown admin command: " << line
-                   << " (try: track <id>, rotate, status, players)\n";
+                   << " (try: help)\n";
       }
     }
   });
