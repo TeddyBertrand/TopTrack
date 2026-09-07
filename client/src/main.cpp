@@ -25,14 +25,27 @@ int main(int argc, char **argv) {
   uint16_t serverPort = argc > 2 ? static_cast<uint16_t>(std::atoi(argv[2])) : 7777;
 
   toptrack::client::net::NetSession netSession;
-  bool netConnected = netSession.connect(serverHost, serverPort, "player1");
+  netSession.connect(serverHost, serverPort, "player1");
 
   toptrack::protocol::LeaderboardUpdate lastLeaderboard;
   toptrack::protocol::RoundStart currentRound;
   float raceElapsedSeconds = 0.0f;
+  float reconnectCooldown = 0.0f;
 
   while (!WindowShouldClose()) {
     float dt = GetFrameTime();
+
+    bool netConnected = netSession.isConnected();
+    if (!netConnected) {
+      // Retry every 2s rather than every frame — reconnect() itself is
+      // cheap to call while already connected, but a failed TCP connect
+      // attempt can block briefly and shouldn't happen 60x/sec.
+      reconnectCooldown -= dt;
+      if (reconnectCooldown <= 0.0f) {
+        netConnected = netSession.reconnect();
+        reconnectCooldown = 2.0f;
+      }
+    }
 
     if (IsKeyPressed(KEY_E)) editorMode = !editorMode;
 
