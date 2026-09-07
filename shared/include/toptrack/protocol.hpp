@@ -42,6 +42,12 @@ struct LeaderboardUpdate {
   std::vector<TimeEntry> standings; // sorted best-first
 };
 
+// TrackDownload request payload. The response reuses MessageType::TrackUpload
+// with a toptrack::serialize(Track) payload — an empty `id` means not found.
+struct TrackRequest {
+  std::string trackId;
+};
+
 // Header prefixing every message on the wire: [uint32 length][uint8 type][json payload]
 struct MessageHeader {
   uint32_t length = 0;
@@ -51,10 +57,12 @@ struct MessageHeader {
 std::string serialize(const RoundStart &msg);
 std::string serialize(const TimeEntry &msg);
 std::string serialize(const LeaderboardUpdate &msg);
+std::string serialize(const TrackRequest &msg);
 
 RoundStart deserializeRoundStart(const std::string &json);
 TimeEntry deserializeTimeEntry(const std::string &json);
 LeaderboardUpdate deserializeLeaderboardUpdate(const std::string &json);
+TrackRequest deserializeTrackRequest(const std::string &json);
 
 // Standalone ghost (de)serialization for storage layers (e.g. DB ghost_json
 // column) that need just the frame list, not a full TimeEntry.
