@@ -401,6 +401,28 @@ track selection — every round rotates onto the same hardcoded `track-1`
 with the same hardcoded medal thresholds; real round scheduling (varying
 tracks, medals sourced from `hub.database.loadTrack`) is still open.
 
+## Medal persisted to DB (was silently dropped)
+
+Found while reading through `SubmitTime`: `hub_.database.recordTime(entry)`
+ran *before* `hub_.roundManager.submitTime(entry)` computed the medal, so
+every row in `times` had medal `None` regardless of the actual finish —
+the medal computation from two entries back never reached storage, only
+the live in-memory leaderboard.
+
+Added a `medal INTEGER NOT NULL DEFAULT 0` column to the `times` table
+migration, `recordTime`/`bestTimesForTrack` bind/read it
+(`static_cast<int>`/`static_cast<Medal>` — `Medal`'s underlying type is
+already `uint8_t`). Added `RoundManager::currentMedals()` getter so
+`server.cpp` can score `entry.medal` via `toptrack::medalForTime()`
+*before* calling `recordTime`, instead of only after via
+`roundManager.submitTime()`'s own (separate, already-correct) scoring of
+the in-memory copy.
+
+Verified end-to-end: fresh DB, `toptrack_net_test`'s 12345ms fake time,
+then read the `times` table directly with `python3`'s `sqlite3` —
+`medal=3` (Gold) persisted, matching the `medal=3` the leaderboard
+broadcast already showed.
+
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
 Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
