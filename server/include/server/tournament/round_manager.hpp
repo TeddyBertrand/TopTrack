@@ -4,17 +4,19 @@
 #include <vector>
 
 #include "toptrack/protocol.hpp"
+#include "toptrack/track.hpp"
 
 namespace toptrack::server::tournament {
 
 // Owns the current COTD-style round: opens it, accepts submitted times,
-// computes the live-sorted leaderboard, closes it and assigns medals from
-// the track's medal thresholds. No lockstep sync — each client races its
-// own instance; this only aggregates results.
+// computes the live-sorted leaderboard, and assigns medals from the
+// track's medal thresholds as each time comes in. No lockstep sync — each
+// client races its own instance; this only aggregates results.
 class RoundManager {
 public:
   void startRound(const std::string &roundId, const std::string &trackId,
-                   double durationSeconds);
+                   double durationSeconds,
+                   const toptrack::MedalTimes &medals = {});
 
   // Returns the updated leaderboard so the caller can broadcast it.
   toptrack::protocol::LeaderboardUpdate submitTime(
@@ -26,6 +28,7 @@ private:
   bool roundActive_ = false;
   std::string currentRoundId_;
   std::string currentTrackId_;
+  toptrack::MedalTimes medals_;
   std::vector<toptrack::protocol::TimeEntry> standings_;
 };
 

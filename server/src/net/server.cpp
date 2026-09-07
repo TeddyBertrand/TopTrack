@@ -153,7 +153,11 @@ void Server::run() {
   Hub hub("toptrack.db");
   // TODO: real round scheduling (admin command / cron). Bootstrapped here
   // so SubmitTime has an active round to land in until that exists.
-  hub.roundManager.startRound("round-1", "track-1", 180.0);
+  // TODO: source medal thresholds from the actual track once round
+  // scheduling loads a real Track via hub.database.loadTrack instead of
+  // hardcoding round-1/track-1 here.
+  hub.roundManager.startRound("round-1", "track-1", 180.0,
+                               toptrack::MedalTimes{60000, 45000, 30000});
 
   std::function<void()> doAccept = [&]() {
     acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
