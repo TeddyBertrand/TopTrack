@@ -31,18 +31,24 @@ struct Hub {
   tournament::RoundManager roundManager;
   std::set<std::shared_ptr<Session>> sessions;
 
-  // Bootstrap round rotation: same track/duration/medals every time,
-  // roundId just increments. Real round scheduling (different tracks,
-  // admin-triggered) is still a TODO — see startRound's own comment.
+  // Bootstrap round rotation: same track every time, roundId just
+  // increments. Real round scheduling (different tracks per round,
+  // admin-triggered) is still a TODO. Medal thresholds are no longer
+  // hardcoded here, though — see startNextRound().
   std::string trackId = "track-1";
   double roundDurationSeconds = 180.0;
-  toptrack::MedalTimes medals{60000, 45000, 30000};
+  toptrack::MedalTimes fallbackMedals{60000, 45000, 30000};
   int roundCounter = 1;
 
   explicit Hub(const std::string &dbPath) : database(dbPath) {}
 
   void startNextRound() {
     std::string roundId = "round-" + std::to_string(roundCounter++);
+    // Prefer the real track's medal thresholds (set by whoever uploaded
+    // it via the tile editor); fall back to a placeholder only if the
+    // track hasn't been uploaded/saved yet.
+    auto track = database.loadTrack(trackId);
+    auto medals = track ? track->medals : fallbackMedals;
     roundManager.startRound(roundId, trackId, roundDurationSeconds, medals);
   }
 };
@@ -193,9 +199,9 @@ void Server::run() {
 
   Hub hub("toptrack.db");
   // TODO: real round scheduling (admin command, different tracks per
-  // round, medal thresholds sourced from hub.database.loadTrack instead
-  // of the hardcoded Hub::medals). For now, rounds just rotate on
-  // hub.trackId every hub.roundDurationSeconds via the timer below.
+  // round). For now, rounds just rotate on hub.trackId every
+  // hub.roundDurationSeconds via the timer below, sourcing medal
+  // thresholds from the track itself (see Hub::startNextRound).
   hub.startNextRound();
 
   // Polls for round expiry every 5s (cheap relative to a 180s+ round) and
