@@ -633,3 +633,16 @@ a connected session by `playerName()` and calls it, or reports "no
 connected player named X".
 
 Verified: `cmake --build build -j` (server-only) builds clean.
+
+## Admin console `medals <bronze> <silver> <gold>` command
+
+`Hub::fallbackMedals` (60000/45000/30000 ms placeholder, used only when
+the next round's track hasn't been uploaded/saved yet — see the earlier
+"Round rotation now sources real medal thresholds" entry) was set once
+at construction with no runtime override. `medals <bronze> <silver>
+<gold>` parses three doubles (`std::istringstream`, rejects malformed
+input) and replaces `hub.fallbackMedals` — explicitly logged as only
+affecting tracks with no saved medals of their own, so it doesn't read
+as silently overriding a real track's thresholds.
+
+Verified: `cmake --build build -j` (server-only) builds clean.

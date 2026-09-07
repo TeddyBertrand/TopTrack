@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -311,6 +312,19 @@ void Server::run() {
             std::cout << "  " << session->playerName() << "\n";
           }
         });
+      } else if (line.rfind("medals ", 0) == 0) {
+        std::istringstream iss(line.substr(7));
+        double bronze, silver, gold;
+        if (!(iss >> bronze >> silver >> gold)) {
+          std::cout << "invalid medals: expected 3 numbers, e.g. medals 60000 45000 30000\n";
+          continue;
+        }
+        asio::post(io, [&hub, bronze, silver, gold]() {
+          hub.fallbackMedals = toptrack::MedalTimes{bronze, silver, gold};
+          std::cout << "fallback medals set: bronze=" << bronze << " silver=" << silver
+                     << " gold=" << gold
+                     << " (only applies to rounds on a track with no saved medals)\n";
+        });
       } else if (line.rfind("kick ", 0) == 0) {
         std::string name = line.substr(5);
         asio::post(io, [&hub, name]() {
@@ -339,6 +353,7 @@ void Server::run() {
         std::cout << "admin commands:\n"
                       "  track <id>     - set the track the next rotation uses\n"
                       "  duration <s>   - set the next round's length in seconds\n"
+                      "  medals <b> <s> <g> - set fallback medal thresholds (ms)\n"
                       "  rotate         - force an immediate round rotation\n"
                       "  status         - print round/track/players snapshot\n"
                       "  players        - list connected player names\n"
