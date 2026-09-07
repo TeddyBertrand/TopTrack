@@ -619,3 +619,17 @@ constant for that). `duration <seconds>` parses and validates
 doesn't-affect-current-round semantics as `track <id>`.
 
 Verified: `cmake --build build -j` (server-only) builds clean.
+
+## Admin console `kick <player>` command
+
+No way to forcibly disconnect a session before this — real gap for a
+self-hosted ~10-12 player group where an operator (not just the
+protocol) is the only real moderation tool available. Added
+`Session::kick()` (public — closes the socket; the existing
+async_read/write error paths drive the actual `hub_.sessions.erase()`
+via the pre-existing private `disconnect()`, so there's still exactly
+one place that erases a session from the hub). `kick <player>` looks up
+a connected session by `playerName()` and calls it, or reports "no
+connected player named X".
+
+Verified: `cmake --build build -j` (server-only) builds clean.

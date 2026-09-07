@@ -67,6 +67,16 @@ public:
 
   const std::string &playerName() const { return playerName_; }
 
+  // Admin-triggered forced disconnect ("kick <player>"). Closes the
+  // socket first so any in-flight async_read/async_write completes with
+  // an error and drives itself out via disconnect() — erasing here too
+  // would double-erase (harmless on a std::set, but this keeps the one
+  // erase() call in one place).
+  void kick() {
+    std::error_code ec;
+    socket_.close(ec);
+  }
+
   void send(toptrack::protocol::MessageType type, const std::string &json) {
     std::string frame;
     uint32_t len = static_cast<uint32_t>(json.size());
@@ -301,6 +311,18 @@ void Server::run() {
             std::cout << "  " << session->playerName() << "\n";
           }
         });
+      } else if (line.rfind("kick ", 0) == 0) {
+        std::string name = line.substr(5);
+        asio::post(io, [&hub, name]() {
+          for (auto &session : hub.sessions) {
+            if (session->playerName() == name) {
+              session->kick();
+              std::cout << "kicked player=" << name << "\n";
+              return;
+            }
+          }
+          std::cout << "no connected player named " << name << "\n";
+        });
       } else if (line == "tracks") {
         asio::post(io, [&hub]() {
           auto ids = hub.database.listTrackIds();
@@ -320,6 +342,7 @@ void Server::run() {
                       "  rotate         - force an immediate round rotation\n"
                       "  status         - print round/track/players snapshot\n"
                       "  players        - list connected player names\n"
+                      "  kick <player>  - force-disconnect a connected player\n"
                       "  tracks         - list saved track ids\n"
                       "  help           - show this list\n";
       } else if (!line.empty()) {
