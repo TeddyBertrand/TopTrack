@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "toptrack/physics.hpp"
 #include "toptrack/track.hpp"
 
 namespace toptrack::protocol {
@@ -69,5 +70,14 @@ TrackRequest deserializeTrackRequest(const std::string &json);
 // column) that need just the frame list, not a full TimeEntry.
 std::string serializeGhost(const std::vector<GhostFrame> &ghost);
 std::vector<GhostFrame> deserializeGhost(const std::string &json);
+
+// Lightweight anti-cheat sanity check the server runs on a submitted
+// TimeEntry: does NOT re-simulate inputs through stepCar (GhostFrame
+// carries only position/heading, not the CarInput that produced it) — it
+// just checks the reported timeMs matches the ghost's own duration, and
+// that no consecutive pair of frames implies a speed the given tuning
+// could never reach. Real input replay would need the client to also
+// record/send CarInput per frame, which it doesn't yet.
+bool isTimeEntryPlausible(const TimeEntry &entry, const toptrack::CarTuning &tuning);
 
 } // namespace toptrack::protocol
