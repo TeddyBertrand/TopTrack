@@ -159,12 +159,19 @@ private:
       case MessageType::SubmitTime: {
         auto entry = toptrack::protocol::deserializeTimeEntry(json);
         // Anti-cheat sanity check only (no input replay yet — see the
-        // function's own doc comment) — flagged, not rejected, since
-        // there's no reject-response message type yet.
+        // function's own doc comment) — flagged, not rejected: the time
+        // is still recorded below, but the submitting client now gets a
+        // TimeEntryRejected notice so it isn't just a server-log-only
+        // warning anymore.
         if (!toptrack::protocol::isTimeEntryPlausible(entry, toptrack::CarTuning{})) {
           std::cout << "warning: implausible time from player="
                      << entry.playerName << " trackId=" << entry.trackId
                      << " timeMs=" << entry.timeMs << "\n";
+          toptrack::protocol::TimeEntryRejected rejected;
+          rejected.trackId = entry.trackId;
+          rejected.timeMs = entry.timeMs;
+          rejected.reason = "implausible ghost (recorded anyway, pending review)";
+          send(MessageType::TimeEntryRejected, toptrack::protocol::serialize(rejected));
         }
         // Score the medal before persisting so it lands in the times
         // table, not just in the live in-memory standings.

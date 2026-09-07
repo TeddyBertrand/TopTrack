@@ -646,3 +646,29 @@ affecting tracks with no saved medals of their own, so it doesn't read
 as silently overriding a real track's thresholds.
 
 Verified: `cmake --build build -j` (server-only) builds clean.
+
+## TimeEntryRejected message (closes the reject-response gap flagged in the plausibility-check entry)
+
+The plausibility-check entry above noted implausible submissions were
+only logged server-side, "there's no reject-response message type yet."
+Added `MessageType::TimeEntryRejected` (=7) and
+`protocol::TimeEntryRejected{trackId, timeMs, reason}` to
+`shared/protocol.{hpp,cpp}` (`NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE`, same
+pattern as the other message structs). `server.cpp`'s `SubmitTime`
+dispatch now sends it back to the submitting session (not broadcast —
+only that client needs to know) whenever
+`isTimeEntryPlausible()` fails, alongside the existing log line. Still
+not a hard reject — the time is recorded and scored exactly as before,
+`reason` says as much ("recorded anyway, pending review") — this is
+purely giving the client visibility it didn't have before.
+`client::net`/`main.cpp` don't consume this message yet (no client
+build in this sandbox — see the X11-sandbox constraint noted throughout
+this log); it currently just lands in `NetSession`'s existing
+"unhandled message type" fallback, same as any other unread type.
+
+Verified end-to-end: fresh DB, `toptrack_net_test` (whose fake time has
+an empty ghost, so always fails `isTimeEntryPlausible`) against a live
+server — server log showed the expected "warning: implausible time"
+line, and the client side printed `received unexpected message
+type=7` immediately after `submitted time for player=net_test`,
+confirming the new message actually reaches the client over the wire.
