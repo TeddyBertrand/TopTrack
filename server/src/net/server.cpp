@@ -238,7 +238,8 @@ void Server::run() {
 
   // Minimal admin console on stdin: "track <id>" changes which track the
   // *next* rotation uses, "rotate" forces one immediately (e.g. to apply
-  // a track change without waiting out the current round). Runs on its
+  // a track change without waiting out the current round), "status" prints
+  // the live round/track/players snapshot. Runs on its
   // own thread since std::getline blocks; posts back onto io's thread so
   // Hub is never touched concurrently from two threads.
   std::thread adminThread([&io, &hub, &rotateRound]() {
@@ -252,9 +253,17 @@ void Server::run() {
         });
       } else if (line == "rotate") {
         asio::post(io, rotateRound);
+      } else if (line == "status") {
+        asio::post(io, [&hub]() {
+          std::cout << "round=" << hub.roundManager.currentRoundId()
+                     << " track=" << hub.roundManager.currentTrackId()
+                     << " remaining=" << hub.roundManager.secondsRemaining() << "s"
+                     << " entries=" << hub.roundManager.standingsCount()
+                     << " players=" << hub.sessions.size() << "\n";
+        });
       } else if (!line.empty()) {
         std::cout << "unknown admin command: " << line
-                   << " (try: track <id>, rotate)\n";
+                   << " (try: track <id>, rotate, status)\n";
       }
     }
   });

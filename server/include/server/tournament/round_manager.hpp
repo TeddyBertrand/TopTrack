@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <string>
 #include <vector>
@@ -36,6 +37,15 @@ public:
   const std::string &currentTrackId() const { return currentTrackId_; }
   double currentDurationSeconds() const { return durationSeconds_; }
   const toptrack::MedalTimes &currentMedals() const { return medals_; }
+  size_t standingsCount() const { return standings_.size(); }
+
+  // Wall-clock seconds left before hasExpired() flips true; clamped to 0,
+  // not itself a side-effecting check like hasExpired().
+  double secondsRemaining() const {
+    double elapsed = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - startTime_).count();
+    return std::max(0.0, durationSeconds_ - elapsed);
+  }
 
 private:
   bool roundActive_ = false;

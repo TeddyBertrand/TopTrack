@@ -544,3 +544,16 @@ regressed (net_test's fake time has an empty ghost, so it's now expected
 to log the warning — didn't verify the log line landed before the
 process was killed for cleanup, but the unit-style check above covers
 the actual logic).
+
+## Admin console `status` command
+
+Third admin command alongside `track <id>`/`rotate`: prints the live
+round snapshot (`round`, `track`, `remaining` seconds, standings
+`entries`, connected `players`) on demand instead of operators having to
+infer state from scattered log lines. Added
+`RoundManager::secondsRemaining()` (clamped-to-zero wall-clock estimate,
+non-side-effecting unlike `hasExpired()`) and `standingsCount()` getters
+to support it; `server.cpp`'s admin thread posts the print onto the
+`io_context` thread same as the other two commands.
+
+Verified: `cmake --build build -j` (server-only) builds clean.
