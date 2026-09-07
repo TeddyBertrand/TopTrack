@@ -64,6 +64,8 @@ public:
 
   void start() { readHeader(); }
 
+  const std::string &playerName() const { return playerName_; }
+
   void send(toptrack::protocol::MessageType type, const std::string &json) {
     std::string frame;
     uint32_t len = static_cast<uint32_t>(json.size());
@@ -127,6 +129,7 @@ private:
     switch (static_cast<MessageType>(type_)) {
       case MessageType::Hello: {
         auto hello = toptrack::protocol::deserializeHelloRequest(json);
+        playerName_ = hello.playerName;
         std::cout << "hello from player=" << hello.playerName << "\n";
 
         toptrack::protocol::RoundStart roundStart;
@@ -189,6 +192,7 @@ private:
   uint8_t type_ = 0;
   std::vector<char> payload_;
   std::deque<std::string> outbox_;
+  std::string playerName_ = "(pending hello)";
 };
 
 } // namespace
@@ -239,7 +243,8 @@ void Server::run() {
   // Minimal admin console on stdin: "track <id>" changes which track the
   // *next* rotation uses, "rotate" forces one immediately (e.g. to apply
   // a track change without waiting out the current round), "status" prints
-  // the live round/track/players snapshot. Runs on its
+  // the live round/track/players snapshot, "players" lists connected
+  // player names. Runs on its
   // own thread since std::getline blocks; posts back onto io's thread so
   // Hub is never touched concurrently from two threads.
   std::thread adminThread([&io, &hub, &rotateRound]() {
@@ -261,9 +266,19 @@ void Server::run() {
                      << " entries=" << hub.roundManager.standingsCount()
                      << " players=" << hub.sessions.size() << "\n";
         });
+      } else if (line == "players") {
+        asio::post(io, [&hub]() {
+          if (hub.sessions.empty()) {
+            std::cout << "no players connected\n";
+            return;
+          }
+          for (auto &session : hub.sessions) {
+            std::cout << "  " << session->playerName() << "\n";
+          }
+        });
       } else if (!line.empty()) {
         std::cout << "unknown admin command: " << line
-                   << " (try: track <id>, rotate, status)\n";
+                   << " (try: track <id>, rotate, status, players)\n";
       }
     }
   });

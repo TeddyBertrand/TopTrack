@@ -557,3 +557,14 @@ to support it; `server.cpp`'s admin thread posts the print onto the
 `io_context` thread same as the other two commands.
 
 Verified: `cmake --build build -j` (server-only) builds clean.
+
+## Admin console `players` command + Session player names
+
+`Session` had no way to report which player it belonged to outside a
+one-off `std::cout` line in the `Hello` handler. Added `playerName_`
+(default `"(pending hello)"` for a session that hasn't sent `Hello` yet,
+set for real when it does) and a `playerName()` getter. New admin command
+`players` lists every connected session's name (or "no players
+connected"), same `asio::post` pattern as `status`/`rotate`.
+
+Verified: `cmake --build build -j` (server-only) builds clean.
