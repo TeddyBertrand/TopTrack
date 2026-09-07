@@ -591,3 +591,18 @@ and admin command `tracks`, which lists them and flags whichever one
 `hub.trackId` currently points the next rotation at.
 
 Verified: `cmake --build build -j` (server-only) builds clean.
+
+## `track <id>` warns on unknown track id
+
+Previously accepted any string silently — an operator typo (or a track
+id that just hasn't been uploaded via the tile editor yet) would only
+surface later as a confusing "placeholder medals" round with no error
+anywhere. `track <id>` now checks the id against
+`Database::listTrackIds()` (added previous entry) and appends a warning
+to its own confirmation line when the id isn't a saved track, instead of
+silently accepting it. Doesn't reject the command — an operator may
+legitimately want to stage a track id before uploading it — just makes
+the gap visible immediately instead of only via a `status`/`tracks`
+cross-check.
+
+Verified: `cmake --build build -j` (server-only) builds clean.

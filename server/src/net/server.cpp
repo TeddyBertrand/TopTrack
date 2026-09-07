@@ -1,5 +1,6 @@
 #include "server/net/server.hpp"
 
+#include <algorithm>
 #include <asio.hpp>
 #include <chrono>
 #include <cstdint>
@@ -254,7 +255,14 @@ void Server::run() {
         std::string trackId = line.substr(6);
         asio::post(io, [&hub, trackId]() {
           hub.trackId = trackId;
-          std::cout << "next round will use track=" << trackId << "\n";
+          auto known = hub.database.listTrackIds();
+          bool exists = std::find(known.begin(), known.end(), trackId) != known.end();
+          std::cout << "next round will use track=" << trackId;
+          if (!exists) {
+            std::cout << " (warning: no saved track with this id yet — "
+                          "next rotation will fall back to placeholder medals)";
+          }
+          std::cout << "\n";
         });
       } else if (line == "rotate") {
         asio::post(io, rotateRound);
