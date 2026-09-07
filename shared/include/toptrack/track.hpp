@@ -30,6 +30,17 @@ struct MedalTimes {
   double goldMs = 0;
 };
 
+enum class Medal : uint8_t {
+  None = 0,
+  Bronze,
+  Silver,
+  Gold,
+};
+
+// Slowest-qualifying medal for a finish time, given goldMs < silverMs <
+// bronzeMs thresholds. A threshold of 0 (unset) never qualifies.
+Medal medalForTime(double timeMs, const MedalTimes &thresholds);
+
 struct Track {
   std::string id;
   std::string name;

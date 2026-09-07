@@ -29,6 +29,7 @@ struct TimeEntry {
   std::string trackId;
   double timeMs = 0;
   std::vector<GhostFrame> ghost;
+  toptrack::Medal medal = toptrack::Medal::None; // set server-side on submit
 };
 
 struct RoundStart {

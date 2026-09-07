@@ -6,6 +6,13 @@ namespace toptrack {
 
 using json = nlohmann::json;
 
+NLOHMANN_JSON_SERIALIZE_ENUM(Medal, {
+  {Medal::None, "none"},
+  {Medal::Bronze, "bronze"},
+  {Medal::Silver, "silver"},
+  {Medal::Gold, "gold"},
+})
+
 NLOHMANN_JSON_SERIALIZE_ENUM(TileType, {
   {TileType::Empty, "empty"},
   {TileType::Straight, "straight"},
@@ -32,6 +39,13 @@ std::string serializeTiles(const std::vector<Tile> &tiles) {
 
 std::vector<Tile> deserializeTiles(const std::string &s) {
   return json::parse(s).get<std::vector<Tile>>();
+}
+
+Medal medalForTime(double timeMs, const MedalTimes &thresholds) {
+  if (thresholds.goldMs > 0 && timeMs <= thresholds.goldMs) return Medal::Gold;
+  if (thresholds.silverMs > 0 && timeMs <= thresholds.silverMs) return Medal::Silver;
+  if (thresholds.bronzeMs > 0 && timeMs <= thresholds.bronzeMs) return Medal::Bronze;
+  return Medal::None;
 }
 
 } // namespace toptrack

@@ -7,7 +7,7 @@ namespace toptrack::protocol {
 using json = nlohmann::json;
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GhostFrame, t, x, y, headingRad)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TimeEntry, playerName, trackId, timeMs, ghost)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TimeEntry, playerName, trackId, timeMs, ghost, medal)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RoundStart, roundId, trackId, durationSeconds)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LeaderboardUpdate, roundId, standings)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TrackRequest, trackId)
