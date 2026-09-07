@@ -273,6 +273,32 @@ X11 in this sandbox), plus a full `cmake --build` of the
 `-DTOPTRACK_BUILD_CLIENT=OFF` targets to confirm nothing else broke.
 Ghost *playback* (rendering another run's recorded path) is still open.
 
+## Hello handshake wired (was an unhandled enum value)
+
+`MessageType::Hello` existed but nothing sent or dispatched it. Added
+`protocol::HelloRequest{playerName}`; server's `dispatch()` now handles
+`Hello` by replying with the active round's `RoundStart` (roundId/
+trackId/durationSeconds, sourced from new `RoundManager` getters —
+`currentRoundId()`/`currentTrackId()`/`currentDurationSeconds()`) then a
+`LeaderboardUpdate` seeded from `hub_.database.bestTimesForTrack(trackId)`
+— this is `bestTimesForTrack`'s first real caller (previous entry's DB
+work had no caller for it yet).
+
+`client::net::Client::sendHello()` added; `NetSession::connect()` now
+takes a `playerName` and sends Hello right after connecting, and the
+background receive loop stashes the `RoundStart` reply the same way it
+already stashed `LeaderboardUpdate` (`takeRoundStart()`, mirroring
+`takeLeaderboard()`). `main.cpp` displays the current round/track under
+the connection status line. `tools/net_test` sends Hello up front too and
+prints both replies before doing its existing time-submit +
+track-upload/download checks.
+
+Verified end-to-end: fresh `toptrack.db`, `toptrack_net_test` against a
+live server — got back `round=round-1 track=track-1
+durationSeconds=180` then `initial leaderboard ... standings=0` (empty,
+correct for a freshly-migrated DB), then the rest of the existing
+net_test flow ran unchanged.
+
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
 Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
