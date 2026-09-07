@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     std::cout << "leaderboard update for round=" << update.roundId << ":\n";
     for (const auto &standing : update.standings) {
       std::cout << "  " << standing.playerName << " " << standing.timeMs
-                << "ms\n";
+                << "ms medal=" << static_cast<int>(standing.medal) << "\n";
     }
   } else {
     std::cout << "received unexpected message type="
