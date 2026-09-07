@@ -140,6 +140,32 @@ connected, submitted a time, got back a correctly-populated
 client (raylib+RmlUi) net loop integration still not done — `client/net`
 now has working guts but `client/src/main.cpp` doesn't call into it yet.
 
+## DB persistence implemented (was TODO stub)
+
+`server/db/database.cpp`'s four methods were no-ops — `recordTime` was
+already being called from the `SubmitTime` path but silently dropped
+every write. Implemented for real against SQLiteCpp:
+`saveTrack`/`loadTrack` (upsert/select on `tracks`), `recordTime`/
+`bestTimesForTrack` (insert/select-ordered on `times`).
+
+Needed JSON (de)serialization for `Track`/`Tile` (didn't exist yet) and
+for a bare `vector<GhostFrame>` (existed only bundled inside `TimeEntry`).
+Added `toptrack::serialize(Track)`/`deserializeTrack` +
+`serializeTiles`/`deserializeTiles` (new `shared/src/track.cpp`), and
+`toptrack::protocol::serializeGhost`/`deserializeGhost`, mirroring the
+existing `protocol.cpp` pattern (`NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE` in
+the `.cpp`, plain function declarations in the header) rather than
+leaking nlohmann macros into headers. `TileType` uses
+`NLOHMANN_JSON_SERIALIZE_ENUM` for stable string values.
+
+Verified end-to-end: `toptrack_net_test` against a running server, then
+read `toptrack.db` directly (`sqlite3`/`python3 sqlite3`) — the submitted
+time landed in the `times` table with correct `track_id`/`player_name`/
+`time_ms`. `saveTrack`/`loadTrack` round-trip not yet exercised by any
+caller (nothing in the server currently calls them — `TrackUpload`/
+`TrackDownload` message types exist in the protocol enum but aren't
+dispatched in `server/net/server.cpp` yet).
+
 **Known gaps / next likely steps** (not yet started): server↔shared
 protocol routing (server currently only logs messages, doesn't dispatch
 to `RoundManager`/`Database`), DB persistence methods, RmlUi/raylib
