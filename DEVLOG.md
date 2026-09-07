@@ -271,6 +271,34 @@ Verified with `g++ -fsyntax-only` against the real raylib/asio/json
 headers in `build/_deps/` (same constraint as the net loop change — no
 X11 in this sandbox), plus a full `cmake --build` of the
 `-DTOPTRACK_BUILD_CLIENT=OFF` targets to confirm nothing else broke.
-Ghost *playback* (rendering another run's recorded path) and server-side
-`stepCar` re-simulation to validate a submitted ghost are still open —
-noted above.
+Ghost *playback* (rendering another run's recorded path) is still open.
+
+## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
+
+Added `toptrack::protocol::isTimeEntryPlausible(entry, tuning)` to
+`shared/protocol.{hpp,cpp}`. This is **not** the full `stepCar`
+re-simulation the architecture doc describes — that needs the original
+per-frame `CarInput`, which `GhostFrame` doesn't carry (only position/
+heading), and the client doesn't record inputs anywhere yet. Instead it's
+a cheaper sanity check: reported `timeMs` must match the ghost's own
+last-frame `t` within 500ms, frame timestamps must be strictly
+increasing, and no consecutive frame pair may imply a speed exceeding
+`tuning.maxSpeed[5]` (top gear) by more than a 1.5x rounding-slack
+margin — catches empty ghosts and position teleports, not subtler
+input-level cheating.
+
+Wired into `server/net/server.cpp`'s `SubmitTime` dispatch: on failure it
+logs a warning (`player=... trackId=... timeMs=...`) but still records
+the time — there's no reject/error response `MessageType` yet, so
+rejecting outright would silently strand the client waiting on a
+response that never comes.
+
+Verified with a standalone throwaway harness (linked directly against
+`shared/src/{protocol,track,physics}.cpp`, not committed) exercising
+three cases: empty ghost → false, a smooth straight-line 2s run →
+true, the same run with one frame teleported → false. Also rebuilt +
+reran `toptrack_net_test`'s server-only path to confirm nothing
+regressed (net_test's fake time has an empty ghost, so it's now expected
+to log the warning — didn't verify the log line landed before the
+process was killed for cleanup, but the unit-style check above covers
+the actual logic).
