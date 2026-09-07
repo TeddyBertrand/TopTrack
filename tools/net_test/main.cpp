@@ -6,6 +6,7 @@
 
 #include "client/net/client.hpp"
 #include "toptrack/protocol.hpp"
+#include "toptrack/track.hpp"
 
 int main(int argc, char **argv) {
   std::string host = argc > 1 ? argv[1] : "127.0.0.1";
@@ -43,6 +44,36 @@ int main(int argc, char **argv) {
   } else {
     std::cout << "received unexpected message type="
               << static_cast<int>(msg->first) << "\n";
+  }
+
+  toptrack::Track track;
+  track.id = "track-1";
+  track.name = "net_test track";
+  track.authorName = "net_test";
+  track.tiles.push_back({0, 0, toptrack::TileType::Start, 0, -1});
+  track.tiles.push_back({1, 0, toptrack::TileType::Finish, 0, -1});
+  track.medals = {60000, 45000, 30000};
+  client.uploadTrack(track);
+  std::cout << "uploaded track id=" << track.id << " tiles=" << track.tiles.size() << "\n";
+
+  client.requestTrack(track.id);
+  auto trackMsg = client.receiveOne();
+  if (!trackMsg) {
+    std::cerr << "no response to track download (disconnected?)\n";
+    return 1;
+  }
+  if (trackMsg->first == toptrack::protocol::MessageType::TrackUpload) {
+    auto downloaded = toptrack::deserializeTrack(trackMsg->second);
+    if (downloaded.id.empty()) {
+      std::cerr << "track not found on server\n";
+      return 1;
+    }
+    std::cout << "downloaded track id=" << downloaded.id
+              << " name=" << downloaded.name
+              << " tiles=" << downloaded.tiles.size() << "\n";
+  } else {
+    std::cout << "received unexpected message type="
+              << static_cast<int>(trackMsg->first) << "\n";
   }
 
   return 0;
