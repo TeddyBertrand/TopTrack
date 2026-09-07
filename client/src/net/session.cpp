@@ -6,12 +6,14 @@ namespace toptrack::client::net {
 
 NetSession::~NetSession() { disconnect(); }
 
-bool NetSession::connect(const std::string &host, uint16_t port) {
+bool NetSession::connect(const std::string &host, uint16_t port,
+                          const std::string &playerName) {
   if (connected_) return true;
   if (!client_.connect(host, port)) return false;
 
   connected_ = true;
   receiveThread_ = std::thread(&NetSession::receiveLoop, this);
+  client_.sendHello(playerName);
   return true;
 }
 
@@ -33,6 +35,11 @@ NetSession::takeLeaderboard() {
   return std::exchange(leaderboard_, std::nullopt);
 }
 
+std::optional<toptrack::protocol::RoundStart> NetSession::takeRoundStart() {
+  std::lock_guard<std::mutex> lock(roundStartMutex_);
+  return std::exchange(roundStart_, std::nullopt);
+}
+
 void NetSession::receiveLoop() {
   while (connected_) {
     auto msg = client_.receiveOne();
@@ -42,6 +49,10 @@ void NetSession::receiveLoop() {
       auto update = toptrack::protocol::deserializeLeaderboardUpdate(msg->second);
       std::lock_guard<std::mutex> lock(leaderboardMutex_);
       leaderboard_ = std::move(update);
+    } else if (msg->first == toptrack::protocol::MessageType::RoundStart) {
+      auto roundStart = toptrack::protocol::deserializeRoundStart(msg->second);
+      std::lock_guard<std::mutex> lock(roundStartMutex_);
+      roundStart_ = std::move(roundStart);
     }
   }
   connected_ = false;

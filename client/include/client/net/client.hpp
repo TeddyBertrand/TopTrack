@@ -22,6 +22,7 @@ public:
   bool connect(const std::string &host, uint16_t port);
   void disconnect();
 
+  void sendHello(const std::string &playerName);
   void sendTimeEntry(const toptrack::protocol::TimeEntry &entry);
   void uploadTrack(const toptrack::Track &track);
   // Server replies with a TrackUpload-typed message; call receiveOne() to

@@ -23,7 +23,10 @@ class NetSession {
 public:
   ~NetSession();
 
-  bool connect(const std::string &host, uint16_t port);
+  // Connects and immediately sends a Hello for playerName, so the server's
+  // RoundStart + seeded LeaderboardUpdate reply arrive via the background
+  // receive loop shortly after.
+  bool connect(const std::string &host, uint16_t port, const std::string &playerName);
   void disconnect();
 
   void submitTime(const toptrack::protocol::TimeEntry &entry);
@@ -31,6 +34,10 @@ public:
   // Latest LeaderboardUpdate received from the server, if any arrived
   // since the last call.
   std::optional<toptrack::protocol::LeaderboardUpdate> takeLeaderboard();
+
+  // Latest RoundStart received from the server (sent in reply to Hello),
+  // if any arrived since the last call.
+  std::optional<toptrack::protocol::RoundStart> takeRoundStart();
 
 private:
   void receiveLoop();
@@ -41,6 +48,9 @@ private:
 
   std::mutex leaderboardMutex_;
   std::optional<toptrack::protocol::LeaderboardUpdate> leaderboard_;
+
+  std::mutex roundStartMutex_;
+  std::optional<toptrack::protocol::RoundStart> roundStart_;
 };
 
 } // namespace toptrack::client::net

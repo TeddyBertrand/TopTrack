@@ -53,6 +53,14 @@ void sendFramed(tcp::socket &socket, toptrack::protocol::MessageType type,
 }
 } // namespace
 
+void Client::sendHello(const std::string &playerName) {
+  if (!impl_) return;
+  toptrack::protocol::HelloRequest hello;
+  hello.playerName = playerName;
+  sendFramed(impl_->socket, toptrack::protocol::MessageType::Hello,
+             toptrack::protocol::serialize(hello));
+}
+
 void Client::sendTimeEntry(const toptrack::protocol::TimeEntry &entry) {
   if (!impl_) return;
   sendFramed(impl_->socket, toptrack::protocol::MessageType::SubmitTime,
