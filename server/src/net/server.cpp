@@ -143,6 +143,9 @@ private:
                      << entry.playerName << " trackId=" << entry.trackId
                      << " timeMs=" << entry.timeMs << "\n";
         }
+        // Score the medal before persisting so it lands in the times
+        // table, not just in the live in-memory standings.
+        entry.medal = toptrack::medalForTime(entry.timeMs, hub_.roundManager.currentMedals());
         hub_.database.recordTime(entry);
         auto update = hub_.roundManager.submitTime(entry);
         auto updateJson = toptrack::protocol::serialize(update);

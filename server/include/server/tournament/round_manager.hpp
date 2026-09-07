@@ -35,6 +35,7 @@ public:
   const std::string &currentRoundId() const { return currentRoundId_; }
   const std::string &currentTrackId() const { return currentTrackId_; }
   double currentDurationSeconds() const { return durationSeconds_; }
+  const toptrack::MedalTimes &currentMedals() const { return medals_; }
 
 private:
   bool roundActive_ = false;

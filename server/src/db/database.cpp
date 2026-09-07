@@ -23,6 +23,7 @@ void Database::migrate() {
       "  player_name TEXT NOT NULL,"
       "  time_ms REAL NOT NULL,"
       "  ghost_json TEXT NOT NULL,"
+      "  medal INTEGER NOT NULL DEFAULT 0,"
       "  FOREIGN KEY(track_id) REFERENCES tracks(id)"
       ")");
 }
@@ -67,11 +68,12 @@ std::optional<toptrack::Track> Database::loadTrack(const std::string &trackId) {
 void Database::recordTime(const toptrack::protocol::TimeEntry &entry) {
   SQLite::Database db(path_, SQLite::OPEN_READWRITE);
   SQLite::Statement stmt(db,
-      "INSERT INTO times (track_id, player_name, time_ms, ghost_json) VALUES (?, ?, ?, ?)");
+      "INSERT INTO times (track_id, player_name, time_ms, ghost_json, medal) VALUES (?, ?, ?, ?, ?)");
   stmt.bind(1, entry.trackId);
   stmt.bind(2, entry.playerName);
   stmt.bind(3, entry.timeMs);
   stmt.bind(4, toptrack::protocol::serializeGhost(entry.ghost));
+  stmt.bind(5, static_cast<int>(entry.medal));
   stmt.exec();
 }
 
@@ -79,7 +81,7 @@ std::vector<toptrack::protocol::TimeEntry> Database::bestTimesForTrack(
     const std::string &trackId, int limit) {
   SQLite::Database db(path_, SQLite::OPEN_READONLY);
   SQLite::Statement stmt(db,
-      "SELECT player_name, time_ms, ghost_json FROM times "
+      "SELECT player_name, time_ms, ghost_json, medal FROM times "
       "WHERE track_id = ? ORDER BY time_ms ASC LIMIT ?");
   stmt.bind(1, trackId);
   stmt.bind(2, limit);
@@ -91,6 +93,7 @@ std::vector<toptrack::protocol::TimeEntry> Database::bestTimesForTrack(
     entry.trackId = trackId;
     entry.timeMs = stmt.getColumn(1).getDouble();
     entry.ghost = toptrack::protocol::deserializeGhost(stmt.getColumn(2).getString());
+    entry.medal = static_cast<toptrack::Medal>(stmt.getColumn(3).getInt());
     results.push_back(std::move(entry));
   }
   return results;
