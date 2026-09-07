@@ -579,3 +579,15 @@ instead of duplicating the growing command list inline every time a new
 one got added.
 
 Verified: `cmake --build build -j` (server-only) builds clean.
+
+## Admin console `tracks` command + `Database::listTrackIds()`
+
+Operators had no way to see what tracks were actually saved before
+pointing `track <id>` at one — `track <anything>` was accepted
+unvalidated even if that id had never been uploaded (still is; this
+just makes the valid set visible, not enforced). Added
+`Database::listTrackIds()` (`SELECT id FROM tracks ORDER BY id ASC`)
+and admin command `tracks`, which lists them and flags whichever one
+`hub.trackId` currently points the next rotation at.
+
+Verified: `cmake --build build -j` (server-only) builds clean.

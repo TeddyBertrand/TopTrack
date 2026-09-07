@@ -19,6 +19,7 @@ public:
 
   void saveTrack(const toptrack::Track &track);
   std::optional<toptrack::Track> loadTrack(const std::string &trackId);
+  std::vector<std::string> listTrackIds();
 
   void recordTime(const toptrack::protocol::TimeEntry &entry);
   std::vector<toptrack::protocol::TimeEntry> bestTimesForTrack(

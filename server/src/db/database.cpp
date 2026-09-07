@@ -65,6 +65,17 @@ std::optional<toptrack::Track> Database::loadTrack(const std::string &trackId) {
   return track;
 }
 
+std::vector<std::string> Database::listTrackIds() {
+  SQLite::Database db(path_, SQLite::OPEN_READONLY);
+  SQLite::Statement stmt(db, "SELECT id FROM tracks ORDER BY id ASC");
+
+  std::vector<std::string> ids;
+  while (stmt.executeStep()) {
+    ids.push_back(stmt.getColumn(0).getString());
+  }
+  return ids;
+}
+
 void Database::recordTime(const toptrack::protocol::TimeEntry &entry) {
   SQLite::Database db(path_, SQLite::OPEN_READWRITE);
   SQLite::Statement stmt(db,
