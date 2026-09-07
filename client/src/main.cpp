@@ -31,14 +31,17 @@ int main(int argc, char **argv) {
     hud.update(car.state(), dt);
     raceElapsedSeconds += dt;
 
-    // T submits the elapsed run time as a fake finish, matching what
-    // tools/net_test does — real finish-line detection isn't wired yet.
+    // T submits the elapsed run time (plus its recorded ghost) as a fake
+    // finish — real finish-line detection isn't wired yet.
     if (netConnected && IsKeyPressed(KEY_T)) {
       toptrack::protocol::TimeEntry entry;
       entry.playerName = "player1";
       entry.trackId = "track-1";
       entry.timeMs = raceElapsedSeconds * 1000.0;
+      entry.ghost = car.ghost();
       netSession.submitTime(entry);
+      car.resetRun();
+      raceElapsedSeconds = 0.0f;
     }
 
     if (auto update = netSession.takeLeaderboard()) {
