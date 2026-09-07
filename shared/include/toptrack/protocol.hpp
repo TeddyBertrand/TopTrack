@@ -16,6 +16,7 @@ enum class MessageType : uint8_t {
   LeaderboardUpdate = 4,
   TrackUpload = 5,
   TrackDownload = 6,
+  TimeEntryRejected = 7,
 };
 
 // Hello payload sent right after connecting; server replies with the
@@ -57,6 +58,16 @@ struct TrackRequest {
   std::string trackId;
 };
 
+// Sent back to the submitting client when isTimeEntryPlausible() fails.
+// The time is still recorded server-side (see isTimeEntryPlausible's own
+// doc comment on why this isn't a hard reject), so this is informational
+// for the client rather than an instruction to resubmit.
+struct TimeEntryRejected {
+  std::string trackId;
+  double timeMs = 0;
+  std::string reason;
+};
+
 // Header prefixing every message on the wire: [uint32 length][uint8 type][json payload]
 struct MessageHeader {
   uint32_t length = 0;
@@ -68,12 +79,14 @@ std::string serialize(const TimeEntry &msg);
 std::string serialize(const LeaderboardUpdate &msg);
 std::string serialize(const TrackRequest &msg);
 std::string serialize(const HelloRequest &msg);
+std::string serialize(const TimeEntryRejected &msg);
 
 RoundStart deserializeRoundStart(const std::string &json);
 TimeEntry deserializeTimeEntry(const std::string &json);
 LeaderboardUpdate deserializeLeaderboardUpdate(const std::string &json);
 TrackRequest deserializeTrackRequest(const std::string &json);
 HelloRequest deserializeHelloRequest(const std::string &json);
+TimeEntryRejected deserializeTimeEntryRejected(const std::string &json);
 
 // Standalone ghost (de)serialization for storage layers (e.g. DB ghost_json
 // column) that need just the frame list, not a full TimeEntry.

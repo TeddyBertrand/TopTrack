@@ -14,12 +14,14 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TimeEntry, playerName, trackId, timeMs, ghost
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RoundStart, roundId, trackId, durationSeconds)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LeaderboardUpdate, roundId, standings)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TrackRequest, trackId)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TimeEntryRejected, trackId, timeMs, reason)
 
 std::string serialize(const RoundStart &msg) { return json(msg).dump(); }
 std::string serialize(const TimeEntry &msg) { return json(msg).dump(); }
 std::string serialize(const LeaderboardUpdate &msg) { return json(msg).dump(); }
 std::string serialize(const TrackRequest &msg) { return json(msg).dump(); }
 std::string serialize(const HelloRequest &msg) { return json(msg).dump(); }
+std::string serialize(const TimeEntryRejected &msg) { return json(msg).dump(); }
 
 RoundStart deserializeRoundStart(const std::string &s) {
   return json::parse(s).get<RoundStart>();
@@ -45,6 +47,10 @@ TrackRequest deserializeTrackRequest(const std::string &s) {
 
 HelloRequest deserializeHelloRequest(const std::string &s) {
   return json::parse(s).get<HelloRequest>();
+}
+
+TimeEntryRejected deserializeTimeEntryRejected(const std::string &s) {
+  return json::parse(s).get<TimeEntryRejected>();
 }
 
 bool isTimeEntryPlausible(const TimeEntry &entry, const toptrack::CarTuning &tuning) {
