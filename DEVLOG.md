@@ -375,12 +375,31 @@ a submission scores normally (1 standing); after sleeping 300ms,
 submission after that point is correctly dropped (standings count stays
 at 1, not 2). Full `cmake --build` of server-only targets stayed green.
 
-**Known gaps / next likely steps**: nothing currently starts a *new*
-round once one expires — `hub.roundManager.startRound()` is still only
-called once at server bootstrap, so a round-1/track-1 bootstrap running
-past 180s just stops accepting times with no successor round scheduled.
-Real admin-triggered or cron-scheduled round rotation is still open (was
-already flagged as a TODO at the bootstrap call site).
+## Round rotation (closes the gap the previous entry flagged)
+
+`server/net/server.cpp`'s `Hub` gained `trackId`/`roundDurationSeconds`/
+`medals`/`roundCounter` fields and `startNextRound()` (starts
+`"round-" + counter++` on the same bootstrap track/duration/medals —
+still not per-track medal thresholds or admin-triggered track selection,
+just automatic rotation so a round doesn't die forever once it expires).
+`Server::run()` now runs an `asio::steady_timer` polling every 5s
+(cheap next to a 180s+ round): if `roundManager.hasExpired()`, it calls
+`startNextRound()` and broadcasts the new `RoundStart` to every connected
+session, so clients pick up the new roundId without resending Hello.
+
+Verified live end-to-end rather than just unit-style: temporarily
+patched `roundDurationSeconds` to 3.0 (uncommitted, reverted
+immediately after), rebuilt, ran the real server binary for ~11s under
+`stdbuf -oL` (needed — SIGTERM otherwise drops buffered stdout before
+flush) — log showed `round rotated: round-2` then `round rotated:
+round-3`, confirming the timer, `hasExpired()`, and the broadcast path
+all work together. Reverted the patch, confirmed via `git diff` it's
+back to 180.0, and did a final clean rebuild.
+
+**Known gaps / next likely steps**: still no admin control or per-round
+track selection — every round rotates onto the same hardcoded `track-1`
+with the same hardcoded medal thresholds; real round scheduling (varying
+tracks, medals sourced from `hub.database.loadTrack`) is still open.
 
 ## Submitted-time plausibility check (partial answer to the stepCar-validation gap)
 
